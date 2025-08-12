@@ -1,0 +1,13 @@
+node_modules
+.venv
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+.DS_Store
+sql_app.db
+*.log
+*.sqlite3
+/diagrams/*
+.vscode/launch.json
