@@ -1,8 +1,63 @@
 from uuid import UUID
 from . import models
 from sqlalchemy.orm import Session, joinedload
+from passlib.context import CryptContext
+from datetime import datetime, timedelta
+from jose import JWTError, jwt
+from typing import Optional, Dict, Union
 
 from . import schemas
+
+# Configuración de seguridad para contraseñas y JWT
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+SECRET_KEY = "09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7"  # Debería estar en un archivo de configuración
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
+
+# Funciones de autenticación
+def verify_password(plain_password, hashed_password):
+    return pwd_context.verify(plain_password, hashed_password)
+
+def get_password_hash(password):
+    return pwd_context.hash(password)
+
+def get_user(db: Session, user_id: int):
+    return db.query(models.User).filter(models.User.id == user_id).first()
+
+def get_user_by_username(db: Session, username: str):
+    return db.query(models.User).filter(models.User.username == username).first()
+
+def create_user(db: Session, user: schemas.UserCreate):
+    hashed_password = get_password_hash(user.password)
+    db_user = models.User(
+        username=user.username,
+        password_hash=hashed_password,
+        name=user.name,
+        email=user.email,
+        is_active=True
+    )
+    db.add(db_user)
+    db.commit()
+    db.refresh(db_user)
+    return db_user
+
+def authenticate_user(db: Session, username: str, password: str):
+    user = get_user_by_username(db, username)
+    if not user:
+        return False
+    if not verify_password(password, user.password_hash):
+        return False
+    return user
+
+def create_access_token(data: Dict[str, Union[str, datetime]], expires_delta: Optional[timedelta] = None):
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(minutes=15)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
 
 def update_threat_risk(db: Session, threat_id: str, data: dict):
     threat = db.query(models.Threat).options(
@@ -13,6 +68,7 @@ def update_threat_risk(db: Session, threat_id: str, data: dict):
         return None
     risk = db.query(models.Risk).filter(models.Risk.id == threat.risk_id).first()
     remediation = db.query(models.Remediation).filter(models.Remediation.id == threat.remediation_id).first()
+    
     # Actualizar campos de Threat
     for key in ['title', 'type', 'description']:
         if key in data:
@@ -32,16 +88,32 @@ def update_threat_risk(db: Session, threat_id: str, data: dict):
         db.commit()
         db.refresh(remediation)
         print(f"Remediation actualizada: description={remediation.description}, status={remediation.status}")
-    # Actualizar campos de Risk
-    for key in ['damage', 'reproducibility', 'exploitability', 'affected_users', 'discoverability', 'compliance']:
+    # Actualizar campos de Risk (OWASP Risk Rating)
+    owasp_fields = [
+        # Threat Agent Factors
+        'skill_level', 'motive', 'opportunity', 'size',
+        # Vulnerability Factors  
+        'ease_of_discovery', 'ease_of_exploit', 'awareness', 'intrusion_detection',
+        # Technical Impact
+        'loss_of_confidentiality', 'loss_of_integrity', 'loss_of_availability', 'loss_of_accountability',
+        # Business Impact
+        'financial_damage', 'reputation_damage', 'non_compliance', 'privacy_violation',
+        # Residual Risk
+        'residual_risk'
+    ]
+    for key in owasp_fields:
         if key in data and risk:
-            print(f"Actualizando Risk {key}: {getattr(risk, key)} -> {data[key]}")
+            if key == 'residual_risk':
+                print(f"Guardando riesgo residual: {data[key]}")
             setattr(risk, key, data[key])
+    
     db.add(threat)
     if risk:
         db.add(risk)
     db.commit()
     db.refresh(threat)
+    if risk:
+        db.refresh(risk)
     if risk:
         db.refresh(risk)
     if remediation:
@@ -109,12 +181,26 @@ def create_threat(db: Session, title:str, description:str, type:str, information
 
 def create_risk(db: Session, risk: schemas.Risk):
     risk_model = models.Risk(
-        damage = risk.damage,
-        reproducibility= risk.reproducibility,
-        exploitability= risk.exploitability,
-        affected_users= risk.affected_users,
-        discoverability= risk.discoverability,
-        compliance= risk.compliance,
+        # Threat Agent Factors
+        skill_level = risk.skill_level,
+        motive = risk.motive,
+        opportunity = risk.opportunity,
+        size = risk.size,
+        # Vulnerability Factors
+        ease_of_discovery = risk.ease_of_discovery,
+        ease_of_exploit = risk.ease_of_exploit,
+        awareness = risk.awareness,
+        intrusion_detection = risk.intrusion_detection,
+        # Technical Impact
+        loss_of_confidentiality = risk.loss_of_confidentiality,
+        loss_of_integrity = risk.loss_of_integrity,
+        loss_of_availability = risk.loss_of_availability,
+        loss_of_accountability = risk.loss_of_accountability,
+        # Business Impact
+        financial_damage = risk.financial_damage,
+        reputation_damage = risk.reputation_damage,
+        non_compliance = risk.non_compliance,
+        privacy_violation = risk.privacy_violation,
         )
     db.add(risk_model)
     db.commit()
@@ -132,4 +218,88 @@ def create_remediation(db: Session, description:str):
     db.refresh(remediation)
     return remediation
 
+
+# Funciones de utilidad para autenticación
+def verify_password(plain_password, hashed_password):
+    return pwd_context.verify(plain_password, hashed_password)
+
+
+def get_password_hash(password):
+    return pwd_context.hash(password)
+
+
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(minutes=15)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+
+# Operaciones CRUD para usuarios
+def get_user_by_username(db: Session, username: str):
+    return db.query(models.User).filter(models.User.username == username).first()
+
+
+def get_user_by_email(db: Session, email: str):
+    return db.query(models.User).filter(models.User.email == email).first()
+
+
+def get_user_by_id(db: Session, user_id: UUID):
+    return db.query(models.User).filter(models.User.id == user_id).first()
+
+
+def authenticate_user(db: Session, username: str, password: str):
+    user = get_user_by_username(db, username)
+    if not user:
+        return False
+    if not verify_password(password, user.password_hash):
+        return False
+    return user
+
+
+def create_user(db: Session, user: schemas.UserCreate):
+    hashed_password = get_password_hash(user.password)
+    db_user = models.User(
+        username=user.username,
+        email=user.email,
+        name=user.name,
+        password_hash=hashed_password
+    )
+    db.add(db_user)
+    db.commit()
+    db.refresh(db_user)
+    return db_user
+
+
+def get_users(db: Session, skip: int = 0, limit: int = 100):
+    return db.query(models.User).offset(skip).limit(limit).all()
+
+
+def update_user(db: Session, user_id: UUID, user_data: schemas.UserBase):
+    db_user = get_user_by_id(db, user_id)
+    if not db_user:
+        return None
+    
+    for key, value in user_data:
+        if hasattr(db_user, key):
+            setattr(db_user, key, value)
+    
+    db.add(db_user)
+    db.commit()
+    db.refresh(db_user)
+    return db_user
+
+
+def delete_user(db: Session, user_id: UUID):
+    db_user = get_user_by_id(db, user_id)
+    if not db_user:
+        return None
+    
+    db.delete(db_user)
+    db.commit()
+    return db_user
 

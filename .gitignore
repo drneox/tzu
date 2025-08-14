@@ -11,3 +11,5 @@ sql_app.db
 *.sqlite3
 /diagrams/*
 .vscode/launch.json
+*.sql
+alembic.ini

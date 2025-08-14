@@ -1,20 +1,27 @@
-# Endpoint para eliminar una amenaza por su id
-from fastapi import Path
-
-
+# API endpoints for the Tzu application
 import datetime
 import shutil
+import os
 from uuid import UUID
-from fastapi import FastAPI, HTTPException, Request, Depends, UploadFile, Body
+from fastapi import FastAPI, HTTPException, Request, Depends, UploadFile, Body, status, Security, Path
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from pydantic import BaseModel, validator
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import joinedload
-from datetime import datetime
-from typing import List
+from datetime import datetime, timedelta
+from typing import List, Optional
+from jose import JWTError, jwt
+from passlib.context import CryptContext
+
+# Importaciones locales
+from . import models, schemas, crud, database, utils, init_db
+
+# Inicializar la base de datos y crear usuario por defecto al arrancar
+init_db.init_db()
 
 from .tzu_ai import clientAI
 from .utils import save_image
@@ -34,6 +41,43 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"]
 )
+
+# Configuración para OAuth2
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+# Función para obtener la base de datos en cada solicitud
+def get_db():
+    db = database.SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+# Función para obtener el usuario actual a partir del token
+async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="No se pudieron validar las credenciales",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        payload = jwt.decode(token, crud.SECRET_KEY, algorithms=[crud.ALGORITHM])
+        username: str = payload.get("sub")
+        if username is None:
+            raise credentials_exception
+        token_data = schemas.TokenData(username=username)
+    except JWTError:
+        raise credentials_exception
+    user = crud.get_user_by_username(db, username=token_data.username)
+    if user is None:
+        raise credentials_exception
+    return user
+
+# Función para obtener usuario activo
+async def get_current_active_user(current_user: schemas.User = Depends(get_current_user)):
+    if not current_user.is_active:
+        raise HTTPException(status_code=400, detail="Usuario inactivo")
+    return current_user
 
 templates = Jinja2Templates(directory="templates")
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -128,12 +172,26 @@ async def create_threat_for_system(
     # Crear risk
     risk_data = threat_data.get('risk', {})
     risk = crud.create_risk(db, schemas.Risk(
-        damage=risk_data.get('damage', 1),
-        reproducibility=risk_data.get('reproducibility', 1),
-        exploitability=risk_data.get('exploitability', 1),
-        affected_users=risk_data.get('affected_users', 1),
-        discoverability=risk_data.get('discoverability', 1),
-        compliance=risk_data.get('compliance', 1)
+        # Threat Agent Factors
+        skill_level=risk_data.get('skill_level', 0),
+        motive=risk_data.get('motive', 0),
+        opportunity=risk_data.get('opportunity', 0),
+        size=risk_data.get('size', 0),
+        # Vulnerability Factors
+        ease_of_discovery=risk_data.get('ease_of_discovery', 0),
+        ease_of_exploit=risk_data.get('ease_of_exploit', 0),
+        awareness=risk_data.get('awareness', 0),
+        intrusion_detection=risk_data.get('intrusion_detection', 0),
+        # Technical Impact
+        loss_of_confidentiality=risk_data.get('loss_of_confidentiality', 0),
+        loss_of_integrity=risk_data.get('loss_of_integrity', 0),
+        loss_of_availability=risk_data.get('loss_of_availability', 0),
+        loss_of_accountability=risk_data.get('loss_of_accountability', 0),
+        # Business Impact
+        financial_damage=risk_data.get('financial_damage', 0),
+        reputation_damage=risk_data.get('reputation_damage', 0),
+        non_compliance=risk_data.get('non_compliance', 0),
+        privacy_violation=risk_data.get('privacy_violation', 0)
     ))
     
     # Crear remediation
@@ -172,24 +230,54 @@ async def read_information_systems(skip: int = 0, limit: int = 100, db: Session 
 @app.get("/information_systems/{information_system_id}", response_model=schemas.InformationSystem)
 async def read_information_system(information_system_id: str, db: Session = Depends(database.get_db)):
     db_information_system = crud.get_information_system(db, information_system_id=information_system_id)
-    print("xxx")
-    print(db_information_system)
     if db_information_system is None:
         raise HTTPException(status_code=404, detail="User not found")
     return db_information_system
 
-@app.post("/evaluate/{information_system_id}", response_model=schemas.InformationSystem)
-async def evaluate(file: UploadFile, information_system_id: str,db: Session = Depends(database.get_db)):
-    image_b64 = save_image(file)
-    db_information_system = crud.attach_diagram(db, information_system_id=information_system_id, image_path=file.filename)
-    result = clientAI(image_b64)
-    for i in result.threats:
-        print(i)
-        remediation = crud.create_remediation(db, i.remediation)
-        risk = crud.create_risk(db,i.risk)
-        threat = crud.create_threat(db,i.title, i.description, i.categories, UUID(information_system_id), risk.id, remediation.id )
-    print(result.threats)
-    return db_information_system
+@app.post("/evaluate/{information_system_id}")
+async def evaluate(file: UploadFile, information_system_id: str, db: Session = Depends(database.get_db)):
+    print("=== COMENZANDO EVALUACIÓN DE DIAGRAMA ===")
+    
+    try:
+        # Guardar la imagen y obtener base64
+        print(f"Procesando archivo: {file.filename}")
+        image_b64 = save_image(file)
+        db_information_system = crud.attach_diagram(db, information_system_id=information_system_id, image_path=file.filename)
+        
+        # Obtener análisis de la IA
+        print("Llamando a clientAI...")
+        result = clientAI(image_b64)
+        print(f"Resultado de clientAI: tipo={type(result)}")
+        
+        # Verificar que el resultado sea un objeto con la propiedad 'threats'
+        if isinstance(result, str):
+            # Si es un string, es un error o mensaje
+            print(f"El resultado es un string: '{result}'")
+            return {"information_system": db_information_system, "message": "No se pudo analizar el diagrama correctamente", "success": False}
+        
+        # Verificar que tenga la propiedad threats y sea iterable
+        print(f"¿Tiene propiedad threats? {hasattr(result, 'threats')}")
+        if hasattr(result, 'threats'):
+            print(f"Número de amenazas encontradas: {len(result.threats)}")
+            print(f"Contenido de threats: {result.threats}")
+        
+        if not hasattr(result, 'threats') or not result.threats:
+            print("No se encontraron amenazas o la propiedad no existe")
+            return {"information_system": db_information_system, "message": "No se encontraron amenazas en el diagrama", "success": False}
+            
+        # Procesar las amenazas encontradas
+        for i in result.threats:
+            print(i)
+            remediation = crud.create_remediation(db, i.remediation)
+            risk = crud.create_risk(db, i.risk)
+            threat = crud.create_threat(db, i.title, i.description, i.categories, UUID(information_system_id), risk.id, remediation.id)
+        
+        print(f"Se encontraron {len(result.threats)} amenazas")
+        return {"information_system": db_information_system, "message": f"Se analizó el diagrama exitosamente y se encontraron {len(result.threats)} amenazas", "success": True}
+    
+    except Exception as e:
+        print(f"Error durante el análisis: {str(e)}")
+        return {"message": f"Error durante el procesamiento: {str(e)}", "success": False}
 
 
 @app.post("/new/", response_model=schemas.InformationSystem)
@@ -245,3 +333,30 @@ async def update_threats_risk_by_system(
     if not updated_threats:
         raise HTTPException(status_code=404, detail="No threats updated")
     return updated_threats
+
+# Endpoints de autenticación
+@app.post("/users/", response_model=schemas.User)
+def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
+    db_user = crud.get_user_by_username(db, username=user.username)
+    if db_user:
+        raise HTTPException(status_code=400, detail="El nombre de usuario ya está registrado")
+    return crud.create_user(db=db, user=user)
+
+@app.post("/token", response_model=schemas.Token)
+async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    user = crud.authenticate_user(db, form_data.username, form_data.password)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Nombre de usuario o contraseña incorrectos",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    access_token_expires = timedelta(minutes=crud.ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = crud.create_access_token(
+        data={"sub": user.username}, expires_delta=access_token_expires
+    )
+    return {"access_token": access_token, "token_type": "bearer"}
+
+@app.get("/users/me/", response_model=schemas.User)
+async def read_users_me(current_user: schemas.User = Depends(get_current_active_user)):
+    return current_user
