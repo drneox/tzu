@@ -1,0 +1,20 @@
+FROM node:18-alpine as build
+
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+RUN npm install
+
+# Copy source code
+COPY . .
+
+# Build the app
+RUN npm run build
+
+# Production stage - just copy build files to volume
+FROM nginx:alpine
+COPY --from=build /app/build /app
+WORKDIR /app
+# Keep container running so volume persists
+CMD ["tail", "-f", "/dev/null"]

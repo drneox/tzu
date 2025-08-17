@@ -1,11 +1,10 @@
-import axios from "axios";
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { FaTrash, FaFilePdf, FaEdit, FaEye, FaChevronDown, FaChevronUp, FaTable, FaThLarge, FaEyeSlash } from "react-icons/fa";
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Flex, TableContainer, Table, Tr, Td, Thead, Th, Tbody, Card, CardHeader, CardBody, Grid, GridItem, Text, Image as ChakraImage, Modal, ModalOverlay, ModalContent, ModalCloseButton, ModalBody, useDisclosure, Button, Icon, useToast, Tabs, TabList, TabPanels, Tab, TabPanel, Accordion, AccordionItem, AccordionButton, AccordionPanel, AccordionIcon, VStack, HStack, Divider, Badge, Collapse, useColorModeValue, Box, Tooltip, Switch, FormControl, FormLabel } from "@chakra-ui/react";
-import { fetchInformationSystemById, updateThreatsRiskBatch, createThreatForSystem, updateThreatResidualRisk, updateThreatsResidualRiskBatch } from "../services/index";
+import { fetchInformationSystemById, updateThreatsRiskBatch, createThreatForSystem, updateThreatResidualRisk, updateThreatsResidualRiskBatch, updateThreatRisk, deleteThreat } from "../services/index";
 import { useLocalization, getOwaspSelectOptions } from '../hooks/useLocalization';
 import OwaspSelector from './OwaspSelector';
 import ReportGenerator from './ReportGenerator';
@@ -609,13 +608,7 @@ const Analysis = () => {
     };
 
     try {
-      await fetch(`http://localhost:8000/threat/${threatId}/risk`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(riskData),
-      });
+      await updateThreatRisk(threatId, riskData);
 
       // Actualizar el estado local de las amenazas
       setThreats(prevThreats => 
@@ -737,7 +730,7 @@ const Analysis = () => {
             </Text>
             <Flex justifyContent="center">
               <ChakraImage 
-                src={`http://localhost:8000/diagrams/${serviceData.diagram}`} 
+                src={`/diagrams/${serviceData.diagram}`} 
                 alt={serviceData.title}
                 maxWidth="600px"
                 maxHeight="400px"
@@ -1618,11 +1611,11 @@ const Analysis = () => {
               for (const threatId of deletedThreats) {
                 try {
                   console.log(`Intentando borrar threat con ID: ${threatId}`);
-                  await axios.delete(`http://localhost:8000/threat/${threatId}`);
+                  await deleteThreat(threatId);
                   console.log(`Threat ${threatId} borrado exitosamente`);
                 } catch (error) {
                   console.error(`Error borrando threat ${threatId}:`, error);
-                  deletionErrors.push(`${threatId}: ${error.response?.data?.detail || error.message}`);
+                  deletionErrors.push(`${threatId}: ${error.message || 'Error desconocido'}`);
                 }
               }
               
@@ -1668,7 +1661,7 @@ const Analysis = () => {
           />
           <ModalBody p={0} display="flex" justifyContent="center" alignItems="center">
             <ChakraImage
-              src={`http://localhost:8000/diagrams/${serviceData.diagram}`}
+              src={`/diagrams/${serviceData.diagram}`}
               alt={serviceData.title}
               maxW="100%"
               maxH="100%"

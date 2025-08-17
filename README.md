@@ -1,10 +1,87 @@
-# TZU - Threat Zero Utility 
+# TZU - Threat Zero Utility 🛡️
 
-An AI-powered comprehensive web application designed to help identify threats and manage action plans, following industry cybersecurity standards including OWASP Risk Rating, STRIDE, OWASP ASVS/ MASVS.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.68+-green.svg)](https://fastapi.tiangolo.com/)
+[![React](https://img.shields.io/badge/React-18+-blue.svg)](https://reactjs.org/)
+[![Docker](https://img.shields.io/badge/Docker-Ready-blue.svg)](https://www.docker.com/)
+[![OWASP](https://img.shields.io/badge/OWASP-Compliant-red.svg)](https://owasp.org/)
 
-![TZU Logo](static/tzu.png)
+<img src="tzu.png" alt="TZU Logo" width="200">
 
-## 🚀 Features
+An AI-powered comprehensive web application designed to help identify threats and manage action plans, following industry cybersecurity standards including OWASP Risk Rating, STRIDE, OWASP ASVS/MASVS.
+
+## 🤔 Why TZU?
+
+**TZU** is inspired by **Sun Tzu**, the Chinese military strategist and philosopher, author of *“The Art of War,”* one of the most influential works on strategy and tactics.
+
+
+> “Victorious warriors win first and then go to war; defeated warriors go to war first and then seek to win.” — Sun Tzu
+
+
+Just as Sun Tzu emphasizes knowing the enemy — and knowing yourself — to achieve victory, TZU empowers cybersecurity teams to:
+
+- 🧭 **Know Yourself:** Inventory assets and data; identify crown jewels; map trust boundaries and data flows.
+- 🎯 **Profile Adversaries:** Capture skill, motive, opportunity/exposure, and size.  
+  _OWASP RR → populates **Threat Agent Factors**, driving **Likelihood**._
+- 🔍 **Know Your Threats:** Derive threats from **architecture/DFD diagrams** and **use cases**, supported by AI-assisted analysis.
+- 🛡️ **Know Your Defenses:** Assess your current posture and **vulnerabilities**; map **controls** to **OWASP ASVS/MASVS**.
+- ⚔️ **Strategic Planning:** Define **mitigation plans prioritized by risk level**; apply a **consistent risk model (Likelihood × Impact)** to **calculate and track** **inherent, current, and residual risk**.
+
+
+
+
+
+
+
+
+
+
+In cybersecurity—as in ancient warfare—**preparation and intelligence make the difference**. TZU delivers the tools and traceability to stay ahead of threats and protect your digital assets by applying Sun Tzu’s strategic wisdom to modern security challenges.
+
+
+
+
+## 🚀 Quick Start
+
+### 🐳 Docker Deployment (Recommended)
+
+The fastest way to get TZU running is with our automated setup script:
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/drneox/tzu
+cd tzu
+
+# 2. Configure environment (optional but recommended)
+# Edit .env file to add your API key and timezone
+cp .env.example .env
+# Then edit .env and configure:
+# - Choose ONE AI provider (not both):
+#   * OPENAI_API_KEY=your_openai_key_here OR
+#   * ANTHROPIC_API_KEY=your_anthropic_key_here
+# - TZ=your_timezone (e.g., America/New_York, Europe/London, America/Lima)
+
+# 3. Run the automated setup script
+./start.sh
+```
+
+The script will automatically:
+- 🔧 Build and start all services (nginx, backend, postgresql)
+- 🔐 Generate secure admin credentials
+- 📋 Display access information
+
+**⚙️ Configuration Notes:**
+- **AI Features**: Choose ONE AI provider - either OpenAI OR Anthropic API key (not both)
+- **Timezone**: Set your local timezone for accurate timestamps in reports and logs
+
+**Access the application:**
+- **Web App**: http://localhost:3434
+- **API Docs**: http://localhost:3434/api/docs
+- **Credentials**: Displayed after setup completion
+
+
+## ✨ Features
 
 ### Core Functionality
 - **AI-Powered Threat Identification**: Intelligent threat detection and analysis capabilities
@@ -13,52 +90,21 @@ An AI-powered comprehensive web application designed to help identify threats an
 - **Industry Standards Compliance**: Built following OWASP Risk Rating, STRIDE, OWASP ASVS, and MASVS cybersecurity standards
 - **Threat Modeling**: Interactive diagram upload and threat identification
 - **Risk Assessment**: Automated calculation of likelihood and impact scores to determine risk levels
-- **PDF Reports**: Professional report generation with detailed analysis and security recommendations based on MASVS/ASVS standards
+- **PDF Reports**: Professional report generation with detailed analysis and security recommendations
 - **Multi-language Support**: English and Spanish localization
 
-### Technical Features
-- **Modern React Frontend**: Built with Chakra UI for responsive design
-- **FastAPI Backend**: High-performance Python API with SQLAlchemy ORM
-- **Authentication System**: Secure user management with protected routes
+## 🔐 Authentication & Security
 
-## 🛠️ Technology Stack
+### Default Credentials
+After deployment, generate secure credentials:
 
-### Backend
-- **FastAPI** - Modern, fast web framework for building APIs
-- **SQLAlchemy** - SQL toolkit and ORM
-- **Alembic** - Database migration tool
-- **Python 3.11+** - Core programming language
+```bash
+docker exec docker-backend-1 python show_credentials.py
+```
 
-### Frontend
-- **React 18** - Modern UI library
-- **Chakra UI** - Simple, modular, and accessible component library
-- **React Router** - Declarative routing for React
-- **jsPDF** - PDF generation in JavaScript
-- **Axios** - HTTP client for API requests
-
-### Development & Testing
-- **Jest** - JavaScript testing framework
-- **React Testing Library** - Testing utilities for React components
-- **ESLint** - Code linting and formatting
-- **Git** - Version control system
-
-
-**Test Coverage:**
-- 8 test suites
-- 79+ individual tests
-- Components, services, hooks, and integration testing
-- Comprehensive mocking for external dependencies
-
-## 📊 Cybersecurity Standards & Methodologies
-
-This AI-powered application helps identify threats and manage action plans by implementing industry-leading cybersecurity standards and methodologies.
-
-### Threat Identification & Action Plan Management
-
-The system combines artificial intelligence with established cybersecurity frameworks to:
-- **Identify Threats**: AI-powered analysis for comprehensive threat detection
-- **Manage Action Plans**: Structured approach to security remediation and risk mitigation
-- **Follow Industry Standards**: Implementation based on market-leading cybersecurity standards
+This will display:
+- **Username**: `admin`
+- **Password**: Auto-generated secure password
 
 ### Supported Cybersecurity Standards
 
@@ -95,31 +141,7 @@ The OWASP Risk Rating methodology categorizes risk levels by evaluating factors 
 - **Non-Compliance**: How much exposure does this create for non-compliance with regulations?
 - **Privacy Violation**: How much personally identifiable information could be disclosed?
 
-## 🏗️ Architecture
-
-### Project Structure
-```
-tzu/
-├── alembic/              # Database migrations
-├── frontend/             # React application
-│   ├── src/
-│   │   ├── components/   # React components
-│   │   ├── services/     # API services
-│   │   ├── hooks/        # Custom React hooks
-│   │   ├── locales/      # Internationalization
-│   │   └── __tests__/    # Test files
-├── static/               # Static assets
-├── templates/            # HTML templates
-├── api.py               # FastAPI application
-├── models.py            # SQLAlchemy models
-├── schemas.py           # Pydantic schemas
-├── crud.py              # Database operations
-└── requirements.txt     # Python dependencies
-```
-
-
-
-## 🤝 Contributing
+## �🤝 Contributing
 
 1. Fork the repository
 2. Create your feature branch (`git checkout -b feature/amazing-feature`)
@@ -127,12 +149,6 @@ tzu/
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-### Development Guidelines
-
-- Follow conventional commit messages
-- Maintain test coverage above 80%
-- Use ESLint for code formatting
-- Write comprehensive documentation
 
 ## 📝 License
 
@@ -140,7 +156,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 👥 Authors
 
-- **Carlos Ganoza (drneox)** - *Initial work* - [@drneox](https://github.com/drneox)
+- **Carlos Ganoza ** - *Initial work* - [@drneox](https://github.com/drneox)
 
 ## 🙏 Acknowledgments
 
@@ -157,4 +173,6 @@ If you have questions or need support, please:
 3. Create a new issue if needed
 
 ---
+
+*English Version | [Versión en Español](README.es.md)*
 

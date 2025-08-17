@@ -28,7 +28,9 @@ export const {
   updateThreatsRiskBatch,
   createThreatForSystem,
   updateThreatResidualRisk,
-  updateThreatsResidualRiskBatch
+  updateThreatsResidualRiskBatch,
+  updateThreatRisk,
+  deleteThreat
 } = threatService;
 
 // Para mantener compatibilidad con código antiguo

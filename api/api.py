@@ -1,12 +1,12 @@
-# API endpoints for the Tzu application
+# API endpoints for TZU application
 import datetime
 import shutil
 import os
 from uuid import UUID
-from fastapi import FastAPI, HTTPException, Request, Depends, UploadFile, Body, status, Security, Path
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi import FastAPI, HTTPException, Depends, UploadFile, Body, status, Security, Path
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
+
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from pydantic import BaseModel, validator
@@ -17,17 +17,82 @@ from typing import List, Optional
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 
-# Importaciones locales
-from . import models, schemas, crud, database, utils, init_db
+# Configure timezone from environment variable
+import locale
+import zoneinfo
 
-# Inicializar la base de datos y crear usuario por defecto al arrancar
-init_db.init_db()
+# Set timezone if TZ environment variable is set
+if 'TZ' in os.environ:
+    try:
+        # Set the timezone for the application
+        timezone_name = os.environ['TZ']
+        os.environ['TZ'] = timezone_name
+        print(f"🌍 Timezone set to: {timezone_name}")
+    except Exception as e:
+        print(f"⚠️ Warning: Could not set timezone {os.environ['TZ']}: {e}")
 
-from .tzu_ai import clientAI
-from .utils import save_image
-from . import crud, models, schemas, database
+# Local imports
+import models
+import schemas
+import crud
+import database
+import utils
+import init_db
+from tzu_ai import clientAI
+from utils import save_image
 
-app = FastAPI()
+# Local imports
+import models
+import schemas
+import crud
+import database
+import utils
+import init_db
+
+from tzu_ai import clientAI
+from utils import save_image
+
+import os
+
+# Configuración basada en entorno
+ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
+DEBUG = os.getenv("DEBUG", "true").lower() == "true"
+
+# Configurar documentación según el entorno
+docs_url = "/docs" if ENVIRONMENT == "development" else None
+redoc_url = "/redoc" if ENVIRONMENT == "development" else None
+openapi_url = "/openapi.json" if ENVIRONMENT == "development" else None
+
+app = FastAPI(
+    title="TZU - Threat Zero Utility API",
+    description="""
+    API para análisis de amenazas y gestión de riesgos de seguridad.
+    
+    ## Autenticación
+    La mayoría de endpoints requieren autenticación JWT. Usa el endpoint `/auth/login` para obtener un token.
+    
+    ## Seguridad
+    - Todos los endpoints están protegidos con autenticación
+    - Implementa rate limiting en endpoints sensibles
+    - Validación estricta de datos de entrada
+    
+    ## Código fuente
+    Este proyecto es open source: [GitHub](https://github.com/drneox/tzu)
+    """,
+    version="1.0.0",
+    contact={
+        "name": "TZU Project",
+        "url": "https://github.com/drneox/tzu",
+    },
+    license_info={
+        "name": "MIT License",
+        "url": "https://github.com/drneox/tzu/blob/main/LICENSE",
+    },
+    # Configurar URLs de documentación según entorno
+    docs_url=docs_url,
+    redoc_url=redoc_url,
+    openapi_url=openapi_url,
+)
 origins = [
     "http://localhost:3000",
     "localhost:3000",
@@ -42,10 +107,42 @@ app.add_middleware(
     allow_headers=["*"]
 )
 
-# Configuración para OAuth2
+# Health check endpoint
+@app.get("/health", status_code=200, tags=["Sistema"])
+async def health_check():
+    """Endpoint para verificar el estado de la aplicación"""
+    try:
+        # Check database connectivity
+        db = database.SessionLocal()
+        try:
+            db.execute("SELECT 1")
+            db_status = "ok"
+        except Exception as e:
+            db_status = "error" if ENVIRONMENT == "production" else f"error: {str(e)}"
+        finally:
+            db.close()
+        
+        response = {
+            "status": "healthy",
+            "timestamp": datetime.utcnow().isoformat(),
+            "database": db_status,
+            "version": "1.0.0"
+        }
+        
+        # Solo incluir información detallada en desarrollo
+        if ENVIRONMENT == "development":
+            response["environment"] = ENVIRONMENT
+            response["debug"] = DEBUG
+            
+        return response
+    except Exception as e:
+        error_detail = str(e) if ENVIRONMENT == "development" else "Service unavailable"
+        raise HTTPException(status_code=503, detail=error_detail)
+
+# OAuth2 configuration
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
-# Función para obtener la base de datos en cada solicitud
+# Function to get database in each request
 def get_db():
     db = database.SessionLocal()
     try:
@@ -53,7 +150,7 @@ def get_db():
     finally:
         db.close()
 
-# Función para obtener el usuario actual a partir del token
+# Function to get current user from token
 async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -73,19 +170,19 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = De
         raise credentials_exception
     return user
 
-# Función para obtener usuario activo
+# Function to get active user
 async def get_current_active_user(current_user: schemas.User = Depends(get_current_user)):
     if not current_user.is_active:
         raise HTTPException(status_code=400, detail="Usuario inactivo")
     return current_user
 
-templates = Jinja2Templates(directory="templates")
-app.mount("/static", StaticFiles(directory="static"), name="static")
+# Static files are now served by nginx
+# app.mount("/static", StaticFiles(directory="static"), name="static")
 app.mount("/diagrams", StaticFiles(directory="diagrams"), name="diagrams")
 
-models.Base.metadata.create_all(bind=database.engine)
+# models.Base.metadata.create_all(bind=database.engine)
 
-# Endpoint batch para actualizar los valores de riesgo de varias amenazas a la vez
+# Batch endpoint to update risk values for multiple threats at once
 class ThreatRiskUpdate(BaseModel):
     threat_id: str
     risk: dict
@@ -94,7 +191,8 @@ class ThreatRiskUpdate(BaseModel):
 @app.get("/information_systems/{information_system_id}/threats", response_model=list[schemas.Threat])
 async def get_threats_by_system(
     information_system_id: str,
-    db: Session = Depends(database.get_db)
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(get_current_user)
 ):
     try:
         system_uuid = UUID(information_system_id)
@@ -110,7 +208,8 @@ async def get_threats_by_system(
 @app.get("/threat/{threat_id}", response_model=schemas.Threat)
 async def get_threat(
     threat_id: str = Path(...),
-    db: Session = Depends(database.get_db)
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(get_current_user)
 ):
     try:
         uuid_id = UUID(threat_id)
@@ -125,7 +224,8 @@ async def get_threat(
 @app.delete("/threat/{threat_id}")
 async def delete_threat(
     threat_id: str = Path(...),
-    db: Session = Depends(database.get_db)
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(get_current_user)
 ):
     try:
         uuid_id = UUID(threat_id)
@@ -141,12 +241,13 @@ async def delete_threat(
     return {"message": "Threat eliminado correctamente", "status": "success", "id": str(uuid_id)}
 
 
-# Endpoint para actualizar los valores de riesgo de una amenaza
+# Endpoint to update risk values for a threat
 @app.put("/threat/{threat_id}/risk", response_model=schemas.Threat)
 async def update_threat_risk(
     threat_id: str,
     risk: dict = Body(...),
-    db: Session = Depends(database.get_db)
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(get_current_user)
 ):
     updated_threat = crud.update_threat_risk(db, threat_id, risk)
     if not updated_threat:
@@ -157,19 +258,20 @@ async def update_threat_risk(
 async def create_threat_for_system(
     information_system_id: str,
     threat_data: dict = Body(...),
-    db: Session = Depends(database.get_db)
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(get_current_user)
 ):
     try:
         system_uuid = UUID(information_system_id)
     except Exception:
         raise HTTPException(status_code=400, detail="El id del sistema no es un UUID válido")
     
-    # Verificar que el sistema existe
+        # Verify that system exists
     system = db.query(models.InformationSystem).filter(models.InformationSystem.id == system_uuid).first()
     if not system:
         raise HTTPException(status_code=404, detail="Information System not found")
     
-    # Crear risk
+    # Create risk
     risk_data = threat_data.get('risk', {})
     risk = crud.create_risk(db, schemas.Risk(
         # Threat Agent Factors
@@ -194,7 +296,7 @@ async def create_threat_for_system(
         privacy_violation=risk_data.get('privacy_violation', 0)
     ))
     
-    # Crear remediation
+    # Create remediation
     remediation_data = threat_data.get('remediation', {})
     remediation = crud.create_remediation(db, remediation_data.get('description', ''))
     
@@ -217,18 +319,13 @@ async def create_threat_for_system(
     
     return created_threat
 
-@app.get("/", response_class=HTMLResponse)
-async def root(request: Request, con):
-  return templates.TemplateResponse(
-        request=request, name="item.html")
-
-@app.get("/information_systems/", response_model=list[schemas.InformationSystem])
-async def read_information_systems(skip: int = 0, limit: int = 100, db: Session = Depends(database.get_db)):
+@app.get("/information_systems", response_model=list[schemas.InformationSystem])
+async def read_information_systems(skip: int = 0, limit: int = 100, db: Session = Depends(database.get_db), current_user: models.User = Depends(get_current_user)):
     information_systems = crud.get_information_systems(db, skip=skip, limit=limit)
     return information_systems
 
 @app.get("/information_systems/{information_system_id}", response_model=schemas.InformationSystem)
-async def read_information_system(information_system_id: str, db: Session = Depends(database.get_db)):
+async def read_information_system(information_system_id: str, db: Session = Depends(database.get_db), current_user: models.User = Depends(get_current_user)):
     db_information_system = crud.get_information_system(db, information_system_id=information_system_id)
     if db_information_system is None:
         raise HTTPException(status_code=404, detail="User not found")
@@ -280,8 +377,8 @@ async def evaluate(file: UploadFile, information_system_id: str, db: Session = D
         return {"message": f"Error durante el procesamiento: {str(e)}", "success": False}
 
 
-@app.post("/new/", response_model=schemas.InformationSystem)
-async def evaluate(information_system:schemas.InformationSystemBaseCreate, db: Session = Depends(database.get_db)):
+@app.post("/new", response_model=schemas.InformationSystem)
+async def evaluate(information_system:schemas.InformationSystemBaseCreate, db: Session = Depends(database.get_db), current_user: models.User = Depends(get_current_user)):
     db_information_system = crud.create_information_system(db, information_system=information_system)
     return db_information_system
 
@@ -294,7 +391,8 @@ async def evaluate(information_system:schemas.InformationSystemBaseCreate, db: S
 async def update_threats_risk_by_system(
     information_system_id: str,
     risks: list = Body(...),
-    db: Session = Depends(database.get_db)
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(get_current_user)
 ):
     # Convertir el id a UUID
     try:
@@ -335,15 +433,17 @@ async def update_threats_risk_by_system(
     return updated_threats
 
 # Endpoints de autenticación
-@app.post("/users/", response_model=schemas.User)
+@app.post("/users", response_model=schemas.User, tags=["Usuarios"])
 def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     db_user = crud.get_user_by_username(db, username=user.username)
     if db_user:
         raise HTTPException(status_code=400, detail="El nombre de usuario ya está registrado")
     return crud.create_user(db=db, user=user)
 
-@app.post("/token", response_model=schemas.Token)
+@app.post("/token", response_model=schemas.Token, tags=["Autenticación"])
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    print("[DEBUG] Username recibido:", repr(form_data.username))
+    print("[DEBUG] Password recibido:", repr(form_data.password))
     user = crud.authenticate_user(db, form_data.username, form_data.password)
     if not user:
         raise HTTPException(
@@ -357,6 +457,6 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
     )
     return {"access_token": access_token, "token_type": "bearer"}
 
-@app.get("/users/me/", response_model=schemas.User)
+@app.get("/users/me", response_model=schemas.User)
 async def read_users_me(current_user: schemas.User = Depends(get_current_active_user)):
     return current_user

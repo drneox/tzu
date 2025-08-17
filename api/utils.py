@@ -3,21 +3,21 @@ import shutil
 
 def save_image(file):
     """
-    Guarda el archivo de imagen y lo codifica en base64
+    Save image file and encode it to base64
     """
     image_base64 = None
     try:
-        # Asegurarse de que exista el directorio diagrams
+        # Ensure diagrams directory exists
         import os
         if not os.path.exists("diagrams"):
             os.makedirs("diagrams")
         
-        # Guardar el archivo físicamente
+        # Save file physically
         file_path = f"diagrams/{file.filename}"
         with open(file_path, "wb") as f:
             shutil.copyfileobj(file.file, f)
         
-        # Resetear el puntero del archivo y leer para codificar
+        # Reset file pointer and read to encode
         file.file.seek(0)
         image_base64 = base64.b64encode(file.file.read()).decode('utf-8')
         
@@ -26,7 +26,7 @@ def save_image(file):
         print(f"Error al guardar la imagen: {e}")
         return None
     finally:
-        # Asegurarse de cerrar el archivo
+        # Ensure file is closed
         file.file.close()
     
     return image_base64

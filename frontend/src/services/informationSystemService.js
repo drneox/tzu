@@ -13,11 +13,11 @@ import apiClient from './apiClient';
 export const getInformationSystems = async (skip = 0, limit = 10) => {
   try {
     // Primero obtenemos el total de sistemas (sin límite)
-    const countResponse = await apiClient.get(`/information_systems/?skip=0&limit=1000`);
+    const countResponse = await apiClient.get(`/information_systems?skip=0&limit=1000`);
     const totalCount = countResponse.data.length;
     
     // Luego obtenemos los datos paginados
-    const dataResponse = await apiClient.get(`/information_systems/?skip=${skip}&limit=${limit}`);
+    const dataResponse = await apiClient.get(`/information_systems?skip=${skip}&limit=${limit}`);
     
     // Agregamos el conteo total a la respuesta
     dataResponse.totalCount = totalCount;

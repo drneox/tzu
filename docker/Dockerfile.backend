@@ -1,0 +1,28 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    libpq-dev \
+    gcc \
+    netcat-openbsd \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements and install
+COPY api/requirements.txt .
+RUN pip install -r requirements.txt
+
+# Copy application code from api folder
+COPY api/ .
+
+# Copy .env file (after api/ to ensure it's not overwritten)
+COPY .env .
+
+# Copy entrypoint from docker folder  
+COPY docker/backend.entrypoint.sh .
+RUN chmod +x backend.entrypoint.sh
+
+EXPOSE 8000
+
+CMD ["./backend.entrypoint.sh"]

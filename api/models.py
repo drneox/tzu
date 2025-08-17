@@ -5,7 +5,7 @@ from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, UUID, DateT
 from sqlalchemy.orm import relationship
 
 
-from .database import Base
+from database import Base
 
 
 class Risk(Base):
@@ -89,7 +89,7 @@ class User(Base):
     username = Column(String, unique=True, index=True)
     email = Column(String, unique=True, index=True)
     name = Column(String)
-    password_hash = Column(String)
+    password_hash = Column(String(128))
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     is_active = Column(Boolean, default=True)
     is_admin = Column(Boolean, default=False)

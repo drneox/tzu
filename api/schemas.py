@@ -1,3 +1,4 @@
+from typing import Optional
 from typing import List, Optional
 from uuid import UUID
 from pydantic import BaseModel, FilePath
@@ -87,6 +88,14 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     password: str
+
+
+# Para actualización parcial de usuario (por ejemplo, solo password)
+class UserUpdate(BaseModel):
+    username: Optional[str] = None
+    email: Optional[str] = None
+    name: Optional[str] = None
+    password: Optional[str] = None
 
 
 class User(UserBase):

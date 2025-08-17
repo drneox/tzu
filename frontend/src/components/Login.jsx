@@ -22,7 +22,7 @@ import {
   useToast
 } from '@chakra-ui/react';
 import { FaUser, FaLock, FaEye, FaEyeSlash } from 'react-icons/fa';
-import { loginUser } from '../services';
+import { loginUser, getCurrentUser } from '../services';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
@@ -56,13 +56,9 @@ const Login = ({ onLogin }) => {
           
           // Obtener los datos del usuario después de la autenticación
           try {
-            const userData = await fetch('http://localhost:8000/users/me/', {
-              headers: {
-                'Authorization': `Bearer ${response.access_token}`
-              }
-            });
+            const user = await getCurrentUser();
             
-            const user = await userData.json();
+            // Store user data
             // Usar el nombre completo del usuario (name) obtenido de la API
             authLogin(response.access_token, user.name);
           } catch (error) {

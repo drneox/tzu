@@ -1,5 +1,6 @@
 import jsPDF from 'jspdf';
 import { useLocalization } from '../hooks/useLocalization';
+import apiClient from '../services/apiClient';
 
 const ReportGenerator = () => {
   const { t } = useLocalization();
@@ -164,25 +165,20 @@ const addDiagramSection = async (pdf, serviceData, yPosition, pageWidth, pageHei
     pdf.text(t?.ui?.pdf_diagram_label || 'Diagram:', 20, yPosition);
     yPosition += 10;
 
-    const imgUrl = `http://localhost:8000/diagrams/${serviceData.diagram}`;
+    const imgUrl = `/diagrams/${serviceData.diagram}`;
     console.log('Full diagram URL:', imgUrl);
     
     try {
       // Verificar que la imagen esté accesible primero
       console.log('Testing image accessibility...');
-      const testResponse = await fetch(imgUrl, { 
-        method: 'GET',
-        mode: 'cors' 
+      const testResponse = await apiClient.get(imgUrl, { 
+        responseType: 'blob'
       });
       
-      if (!testResponse.ok) {
-        throw new Error(`Image not accessible: ${testResponse.status} ${testResponse.statusText}`);
-      }
-      
-      console.log('Image is accessible, content-type:', testResponse.headers.get('content-type'));
+      console.log('Image is accessible, content-type:', testResponse.headers['content-type']);
       
       // Si llegamos aquí, la imagen está accesible, usar el blob directamente
-      const blob = await testResponse.blob();
+      const blob = testResponse.data;
       console.log('Got image blob, size:', blob.size, 'type:', blob.type);
       
       const dataUrl = await new Promise((resolve) => {

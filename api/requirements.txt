@@ -1,4 +1,5 @@
 annotated-types==0.7.0
+alembic==1.13.2
 anyio==4.4.0
 build==1.2.1
 CacheControl==0.14.0
@@ -32,14 +33,15 @@ MarkupSafe==2.1.5
 mdurl==0.1.2
 more-itertools==10.2.0
 msgpack==1.0.8
-openai==1.43.0
 packaging==24.0
+passlib[bcrypt]==1.7.4
 pexpect==4.9.0
 pkginfo==1.10.0
 platformdirs==4.2.2
 poetry==1.8.3
 poetry-core==1.9.0
 poetry-plugin-export==1.8.0
+psycopg2-binary==2.9.9
 ptyprocess==0.7.0
 pycparser==2.22
 pydantic==2.8.2
@@ -47,6 +49,7 @@ pydantic_core==2.20.1
 Pygments==2.18.0
 pyproject_hooks==1.1.0
 python-dotenv==1.0.1
+python-jose[cryptography]==3.3.0
 python-multipart==0.0.9
 PyYAML==6.0.2
 rapidfuzz==3.9.1
@@ -69,3 +72,5 @@ virtualenv==20.26.2
 watchfiles==0.24.0
 websockets==13.0.1
 xattr==1.1.0
+any-llm-sdk[openai,anthropic]
+

@@ -63,3 +63,32 @@ export const createThreatForSystem = async (systemId, threatData) => {
     throw new Error(error.response?.data?.detail || 'Error al crear amenaza');
   }
 };
+
+/**
+ * Actualiza los factores de riesgo OWASP de una amenaza
+ * @param {string} threatId - ID de la amenaza
+ * @param {Object} riskData - Datos de riesgo OWASP
+ * @returns {Promise} - Promise con los datos de la amenaza actualizada
+ */
+export const updateThreatRisk = async (threatId, riskData) => {
+  try {
+    return await apiClient.put(`/threat/${threatId}/risk`, riskData);
+  } catch (error) {
+    console.error('Error al actualizar riesgo de amenaza:', error);
+    throw new Error(error.response?.data?.detail || 'Error al actualizar riesgo');
+  }
+};
+
+/**
+ * Elimina una amenaza
+ * @param {string} threatId - ID de la amenaza a eliminar
+ * @returns {Promise} - Promise con la confirmación de eliminación
+ */
+export const deleteThreat = async (threatId) => {
+  try {
+    return await apiClient.delete(`/threat/${threatId}`);
+  } catch (error) {
+    console.error('Error al eliminar amenaza:', error);
+    throw new Error(error.response?.data?.detail || 'Error al eliminar amenaza');
+  }
+};

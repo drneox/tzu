@@ -1,14 +1,12 @@
 import json
 from types import SimpleNamespace
-from dotenv import load_dotenv
 import os
 from openai import OpenAI
 from any_llm import completion
-# Cargar variables de entorno del archivo .env
-load_dotenv()
 
+# Docker Compose pasa las variables de entorno automáticamente
+# No necesitamos load_dotenv() ya que las variables están disponibles via env
 
-client = OpenAI()
 prompt_system = f"""
         eres un experto en seguridad informática, y realizaras un modelado de amenazas de manera detallada utilizando la metodología STRIDE y considerando MASVS y ASVS
         y categorizando el riesgo utilizando OWASP Risk Rating Methodology.
@@ -138,34 +136,6 @@ def clientAI(base64_image):
     empty_obj = SimpleNamespace()
     empty_obj.threats = []
     return empty_obj
-def clientAIx(base64_image):
-  print(base64_image)
-  completion = client.chat.completions.create(
-  model="gpt-4o",
-  messages=[
-    {"role": "system", "content": "%s" % prompt_system},
-    {"role": "user", "content": [
 
-      {"type": "image_url",
-       "image_url":{
-        "url": f"data:image/jpeg;base64,{base64_image}"
-       }}
-    ],
-    "max_tokens": 3000000}
-  ]
-  )
-  response_text = completion.choices[0].message.content.strip()
-  json_start = response_text.find("{")
-  json_end = response_text.rfind("}")
-  print(response_text)
-  if json_start != -1 and json_end != -1:
-    json_content = response_text[json_start:json_end+1]
-    try:
-      threat_analysis_object = json.loads(json_content, object_hook=lambda d: SimpleNamespace(**d))
-      return threat_analysis_object
-    except json.JSONDecodeError:
-                    pass
-  else:
-    return "[]"
 
 

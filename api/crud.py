@@ -1,20 +1,20 @@
 from uuid import UUID
-from . import models
+import models
 from sqlalchemy.orm import Session, joinedload
 from passlib.context import CryptContext
 from datetime import datetime, timedelta
 from jose import JWTError, jwt
 from typing import Optional, Dict, Union
 
-from . import schemas
+import schemas
 
-# Configuración de seguridad para contraseñas y JWT
+# Security configuration for passwords and JWT
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-SECRET_KEY = "09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7"  # Debería estar en un archivo de configuración
+SECRET_KEY = "09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7"  # Should be in a config file
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
-# Funciones de autenticación
+# Authentication functions
 def verify_password(plain_password, hashed_password):
     return pwd_context.verify(plain_password, hashed_password)
 
@@ -27,14 +27,15 @@ def get_user(db: Session, user_id: int):
 def get_user_by_username(db: Session, username: str):
     return db.query(models.User).filter(models.User.username == username).first()
 
-def create_user(db: Session, user: schemas.UserCreate):
+def create_user(db: Session, user: schemas.UserCreate, is_admin: bool = False):
     hashed_password = get_password_hash(user.password)
     db_user = models.User(
         username=user.username,
-        password_hash=hashed_password,
-        name=user.name,
         email=user.email,
-        is_active=True
+        name=user.name,
+        password_hash=hashed_password,
+        is_active=True,
+        is_admin=is_admin
     )
     db.add(db_user)
     db.commit()
@@ -43,9 +44,18 @@ def create_user(db: Session, user: schemas.UserCreate):
 
 def authenticate_user(db: Session, username: str, password: str):
     user = get_user_by_username(db, username)
+    print(f"[DEBUG] Buscando usuario: {repr(username)} -> Encontrado: {user is not None}")
+    if user:
+        print(f"[DEBUG] Hash en BD: {repr(user.password_hash)}")
     if not user:
         return False
-    if not verify_password(password, user.password_hash):
+    try:
+        valido = verify_password(password, user.password_hash)
+        print(f"[DEBUG] Resultado verificación hash: {valido}")
+    except Exception as e:
+        print(f"[DEBUG] Error al verificar hash: {e}")
+        return False
+    if not valido:
         return False
     return user
 
@@ -69,12 +79,12 @@ def update_threat_risk(db: Session, threat_id: str, data: dict):
     risk = db.query(models.Risk).filter(models.Risk.id == threat.risk_id).first()
     remediation = db.query(models.Remediation).filter(models.Remediation.id == threat.remediation_id).first()
     
-    # Actualizar campos de Threat
+    # Update Threat fields
     for key in ['title', 'type', 'description']:
         if key in data:
             print(f"Actualizando Threat {key}: {getattr(threat, key)} -> {data[key]}")
             setattr(threat, key, data[key])
-    # Actualizar campo de Remediation
+    # Update Remediation field
     if remediation and 'remediation' in data and isinstance(data['remediation'], dict):
         remediation_data = data['remediation']
         print(f"Datos de remediación recibidos: {remediation_data}")
@@ -88,7 +98,7 @@ def update_threat_risk(db: Session, threat_id: str, data: dict):
         db.commit()
         db.refresh(remediation)
         print(f"Remediation actualizada: description={remediation.description}, status={remediation.status}")
-    # Actualizar campos de Risk (OWASP Risk Rating)
+    # Update Risk fields (OWASP Risk Rating)
     owasp_fields = [
         # Threat Agent Factors
         'skill_level', 'motive', 'opportunity', 'size',
@@ -219,7 +229,7 @@ def create_remediation(db: Session, description:str):
     return remediation
 
 
-# Funciones de utilidad para autenticación
+# Authentication utility functions
 def verify_password(plain_password, hashed_password):
     return pwd_context.verify(plain_password, hashed_password)
 
@@ -239,7 +249,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     return encoded_jwt
 
 
-# Operaciones CRUD para usuarios
+# CRUD operations for users
 def get_user_by_username(db: Session, username: str):
     return db.query(models.User).filter(models.User.username == username).first()
 
@@ -261,18 +271,6 @@ def authenticate_user(db: Session, username: str, password: str):
     return user
 
 
-def create_user(db: Session, user: schemas.UserCreate):
-    hashed_password = get_password_hash(user.password)
-    db_user = models.User(
-        username=user.username,
-        email=user.email,
-        name=user.name,
-        password_hash=hashed_password
-    )
-    db.add(db_user)
-    db.commit()
-    db.refresh(db_user)
-    return db_user
 
 
 def get_users(db: Session, skip: int = 0, limit: int = 100):
@@ -284,7 +282,12 @@ def update_user(db: Session, user_id: UUID, user_data: schemas.UserBase):
     if not db_user:
         return None
     
-    for key, value in user_data:
+    # Allow partial update and hash password if provided
+    data = user_data.dict(exclude_unset=True)
+    if "password" in data and data["password"]:
+        db_user.password_hash = get_password_hash(data["password"])
+        data.pop("password")
+    for key, value in data.items():
         if hasattr(db_user, key):
             setattr(db_user, key, value)
     
