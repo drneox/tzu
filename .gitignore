@@ -9,5 +9,58 @@ __pycache__/
 sql_app.db
 *.log
 *.sqlite3
-/diagrams/*
 .vscode/launch.json
+*.sql
+alembic.ini
+
+# Diagrams - ignore all uploaded diagram files
+api/diagrams/*
+!api/diagrams/.gitkeep
+
+# Docker
+.docker/
+docker-compose.override.yml
+
+# PostgreSQL
+*.dump
+*.sql.gz
+
+# Backup files
+*.backup
+*.bak
+
+# Frontend / React / Node.js
+frontend/node_modules/
+frontend/build/
+frontend/.env
+frontend/.env.local
+frontend/.env.development.local
+frontend/.env.test.local
+frontend/.env.production.local
+frontend/npm-debug.log*
+frontend/coverage/
+frontend/.eslintcache
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Dependency directories
+node_modules/
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# dotenv environment variables file
+.env.test
+.env.production
+
+# Output of 'npm pack'
+*.tgz
+.vscode/settings.json
+api/test.db

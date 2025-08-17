@@ -1,33 +1,41 @@
-import axios from "axios";
-export const updateThreatsRiskBatch = async (systemId, updates) => {
-  return axios.put(`http://localhost:8000/information_systems/${systemId}/threats/risk/batch`, updates);
-};
+/**
+ * Servicios API Centralizados
+ * Archivo index que exporta todos los servicios disponibles en la aplicación
+ */
 
-export const createThreatForSystem = async (systemId, threatData) => {
-  return axios.post(`http://localhost:8000/information_systems/${systemId}/threats`, threatData);
-};
+// Importar todos los servicios
+import apiClient, { API_BASE_URL } from './apiClient';
+import * as authService from './authService';
+import * as informationSystemService from './informationSystemService';
+import * as threatService from './threatService';
 
-export const fetchInformationSystemById = async (id) => {
-  const res = await getInformationSystemsById(id);
-  return res.data;
-};
-export const uploadDiagram = (id, file) => {
-    const formData = new FormData();
-    formData.append("file", file);
-    return axios.post(`http://localhost:8000/evaluate/${id}`, formData, {
-        headers: { "Content-Type": "multipart/form-data" }
-    });
-};
+// Exportar todos los servicios
+export const { 
+  loginUser,
+  registerUser,
+  getCurrentUser
+} = authService;
 
-export const getInformationSystems = () => {
-    return axios.get("http://localhost:8000/information_systems/?skip=0&limit=100")
-};
+export const {
+  getInformationSystems,
+  getInformationSystemById,
+  createInformationSystem,
+  uploadDiagram,
+  fetchInformationSystemById
+} = informationSystemService;
 
-export const getInformationSystemsById = (id) => {
-    return axios.get(`http://localhost:8000/information_systems/${id}`)
-};
+export const {
+  updateThreatsRiskBatch,
+  createThreatForSystem,
+  updateThreatResidualRisk,
+  updateThreatsResidualRiskBatch,
+  updateThreatRisk,
+  deleteThreat
+} = threatService;
 
-export const createInformationSystem = (data) => {
-    return axios.post("http://localhost:8000/new", data);
-};
+// Para mantener compatibilidad con código antiguo
+export const getInformationSystemsById = informationSystemService.getInformationSystemById;
+
+// También exportamos el cliente API y la URL base por si algún componente necesita acceso directo
+export { apiClient, API_BASE_URL };
 
