@@ -13,6 +13,67 @@ echo "╚═══════════════════════�
 echo ""
 echo "🚀 Starting TZU Backend Service..."
 
+# Function to generate SECRET_KEY if not present
+setup_environment() {
+    echo "🔐 Checking environment configuration..."
+    
+    ENV_FILE="/app/.env"
+    
+    # Check if .env exists
+    if [ ! -f "$ENV_FILE" ]; then
+        echo "⚠️  .env file not found at $ENV_FILE"
+        echo "📝 Please create .env file manually or copy from .env.example"
+        echo "🔄 Continuing without environment file..."
+        return
+    fi
+    
+    echo "✅ Found .env file at $ENV_FILE"
+    
+    # Function to generate a secure random key
+    generate_secret_key() {
+        python3 -c "import secrets; print(secrets.token_urlsafe(32))"
+    }
+    
+    # Check if SECRET_KEY exists in .env and is not empty
+    if ! grep -q "^SECRET_KEY=" "$ENV_FILE" 2>/dev/null || [ -z "$(grep "^SECRET_KEY=" "$ENV_FILE" 2>/dev/null | cut -d'=' -f2)" ]; then
+        echo "🔑 SECRET_KEY not found or empty. Generating new one..."
+        echo "⚠️  WARNING: This will invalidate all existing JWT tokens!"
+        
+        # Generate a new SECRET_KEY
+        NEW_SECRET_KEY=$(generate_secret_key)
+        
+        # Remove any existing empty SECRET_KEY line
+        sed -i '/^SECRET_KEY=$/d' "$ENV_FILE" 2>/dev/null || true
+        
+        # Add the new SECRET_KEY
+        echo "SECRET_KEY=$NEW_SECRET_KEY" >> "$ENV_FILE"
+        
+        echo "✅ Generated new SECRET_KEY (${#NEW_SECRET_KEY} characters)"
+        echo "💾 SECRET_KEY saved to $ENV_FILE for persistence"
+    else
+        EXISTING_KEY=$(grep "^SECRET_KEY=" "$ENV_FILE" | cut -d'=' -f2)
+        echo "✅ Using existing SECRET_KEY (${#EXISTING_KEY} characters)"
+        echo "🔒 JWT tokens will remain valid across restarts"
+    fi
+    
+    # Export environment variables
+    set -a
+    source "$ENV_FILE"
+    set +a
+    
+    # Validate required API keys
+    if [ -z "$OPENAI_API_KEY" ] && [ -z "$ANTHROPIC_API_KEY" ]; then
+        echo "❌ ERROR: No AI API keys found"
+        echo "📝 Please set at least one: OPENAI_API_KEY or ANTHROPIC_API_KEY in your .env file"
+        echo "🔧 Copy .env.example to .env and configure your API keys"
+        exit 1
+    else
+        echo "✅ AI API key(s) configured"
+    fi
+    
+    echo "📋 Environment configuration completed"
+}
+
 # Function to wait for database
 wait_for_db() {
     echo "🔄 Waiting for PostgreSQL to be available..."
@@ -90,6 +151,7 @@ start_server() {
 }
 
 # Execute all functions in order
+setup_environment
 wait_for_db
 apply_migrations
 initialize_data
