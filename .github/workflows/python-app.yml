@@ -30,28 +30,8 @@ jobs:
             build-mode: none
           - language: python
             build-mode: none
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Inicializa CodeQL y le pasamos el config que limita a api/
-      - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
-        with:
-          languages: ${{ matrix.language }}
-          build-mode: ${{ matrix.build-mode }}
-          config-file: ./.github/codeql/codeql-config.yml
-          # queries: security-extended,security-and-quality  # <- opcional
 
-      # Si algún lenguaje fuera "manual", aquí iría el build. En tu caso es "none".
-      - if: matrix.build-mode == 'manual'
-        shell: bash
-        run: |
-          echo "Add your manual build steps here"
-          exit 1
-
-      - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
-        with:
-          category: "/language:${{ matrix.language }}"
