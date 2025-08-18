@@ -1,0 +1,31 @@
+jobs:
+  analyze:
+    # ... tu job de CodeQL tal cual ...
+
+  api-tests:
+    if: ${{ github.event_name != 'schedule' }}   # opcional: evita correr tests en el cron
+    name: API tests (pytest)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+
+      - name: Install deps
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip
+          pip install pytest flake8
+          [ -f api/requirements.txt ] && pip install -r api/requirements.txt || echo "No api/requirements.txt"
+
+      - name: Lint (api)
+        run: flake8 api --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
+      - name: Run pytest (api/tests)
+        run: pytest api/tests
