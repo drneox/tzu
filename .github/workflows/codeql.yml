@@ -41,7 +41,7 @@ jobs:
         with:
           languages: ${{ matrix.language }}
           build-mode: ${{ matrix.build-mode }}
-          config-file: ./.github/codeql/codeql-config.yml
+          config-file: ./.github/workflows/codeql-config.yml
           # queries: security-extended,security-and-quality  # <- opcional
 
       # Si algún lenguaje fuera "manual", aquí iría el build. En tu caso es "none".
