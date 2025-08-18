@@ -9,7 +9,7 @@
 
 <img src="tzu.png" alt="TZU Logo" width="200">
 
-Una aplicación web integral impulsada por IA diseñada para ayudar a identificar amenazas y gestionar planes de acción, siguiendo estándares de ciberseguridad de la industria incluyendo OWASP Risk Rating, STRIDE, OWASP ASVS/MASVS.
+Una aplicación web impulsada por IA diseñada para ayudar a identificar amenazas y gestionar planes de acción, siguiendo estándares de ciberseguridad de la industria incluyendo OWASP Risk Rating, STRIDE, OWASP ASVS/MASVS.
 
 ## 🤔 ¿Por qué TZU?
 

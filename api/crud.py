@@ -9,10 +9,11 @@ from typing import Optional, Dict, Union
 import schemas
 
 # Security configuration for passwords and JWT
+import os
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-SECRET_KEY = "09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7"  # Should be in a config file
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+SECRET_KEY = os.getenv("SECRET_KEY")
+ALGORITHM = os.getenv("ALGORITHM", "HS256")
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
 
 # Authentication functions
 def verify_password(plain_password, hashed_password):
@@ -61,11 +62,23 @@ def authenticate_user(db: Session, username: str, password: str):
 
 def create_access_token(data: Dict[str, Union[str, datetime]], expires_delta: Optional[timedelta] = None):
     to_encode = data.copy()
+    
+    # Add security claims
+    now = datetime.utcnow()
     if expires_delta:
-        expire = datetime.utcnow() + expires_delta
+        expire = now + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=15)
-    to_encode.update({"exp": expire})
+        expire = now + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    
+    # Standard JWT claims for better security
+    to_encode.update({
+        "exp": expire,      # Expiration time
+        "iat": now,         # Issued at time
+        "nbf": now,         # Not before time
+        "iss": "tzu-api",   # Issuer
+        "aud": "tzu-client" # Audience
+    })
+    
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 

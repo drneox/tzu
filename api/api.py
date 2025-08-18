@@ -56,7 +56,12 @@ import os
 
 # Configuración basada en entorno
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
-DEBUG = os.getenv("DEBUG", "true").lower() == "true"
+DEBUG = ENVIRONMENT == "development"  # Debug mode enabled only in development
+
+# JWT Configuration
+SECRET_KEY = os.getenv("SECRET_KEY")
+ALGORITHM = os.getenv("ALGORITHM", "HS256")
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
 
 # Configurar documentación según el entorno
 docs_url = "/docs" if ENVIRONMENT == "development" else None
@@ -106,6 +111,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"]
 )
+
+
+# Static files are now served by nginx
+# app.mount("/static", StaticFiles(directory="static"), name="static")
+app.mount("/diagrams", StaticFiles(directory="diagrams"), name="diagrams")
 
 # Health check endpoint
 @app.get("/health", status_code=200, tags=["Sistema"])
@@ -158,7 +168,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = De
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
-        payload = jwt.decode(token, crud.SECRET_KEY, algorithms=[crud.ALGORITHM])
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         username: str = payload.get("sub")
         if username is None:
             raise credentials_exception
@@ -176,9 +186,6 @@ async def get_current_active_user(current_user: schemas.User = Depends(get_curre
         raise HTTPException(status_code=400, detail="Usuario inactivo")
     return current_user
 
-# Static files are now served by nginx
-# app.mount("/static", StaticFiles(directory="static"), name="static")
-app.mount("/diagrams", StaticFiles(directory="diagrams"), name="diagrams")
 
 # models.Base.metadata.create_all(bind=database.engine)
 
@@ -451,7 +458,7 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
             detail="Nombre de usuario o contraseña incorrectos",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    access_token_expires = timedelta(minutes=crud.ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = crud.create_access_token(
         data={"sub": user.username}, expires_delta=access_token_expires
     )
