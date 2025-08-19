@@ -1,7 +1,12 @@
-jobs:
-  analyze:
-    # ... tu job de CodeQL tal cual ...
+name: Python API Tests
 
+on:
+  push:
+    branches: [ "main", "develop" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
   api-tests:
     if: ${{ github.event_name != 'schedule' }}   # opcional: evita correr tests en el cron
     name: API tests (pytest)
