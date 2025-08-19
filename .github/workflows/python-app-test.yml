@@ -35,4 +35,6 @@ jobs:
 
       - name: Run pytest (api/tests)
         working-directory: api
+        env:
+          PYTHONPATH: .
         run: pytest tests/
