@@ -19,7 +19,7 @@ fastapi-cli==0.0.5
 fastjsonschema==2.19.1
 filelock==3.14.0
 h11==0.16.0
-httpcore==1.0.5
+httpcore==1.0.9
 httptools==0.6.1
 httpx==0.27.2
 idna==3.7
