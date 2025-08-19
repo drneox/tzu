@@ -1,7 +1,12 @@
-jobs:
-  analyze:
-    # ... tu job de CodeQL tal cual ...
+name: Python API Tests
 
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
   api-tests:
     if: ${{ github.event_name != 'schedule' }}   # opcional: evita correr tests en el cron
     name: API tests (pytest)
@@ -11,10 +16,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python 3.10
+      - name: Set up Python 3.11
         uses: actions/setup-python@v4
         with:
-          python-version: "3.10"
+          python-version: "3.11"
 
       - name: Install deps
         shell: bash
@@ -28,4 +33,5 @@ jobs:
         run: flake8 api --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 
       - name: Run pytest (api/tests)
-        run: pytest api/tests
+        working-directory: api
+        run: pytest tests/
