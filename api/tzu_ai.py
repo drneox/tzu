@@ -1,7 +1,6 @@
 import json
 from types import SimpleNamespace
 import os
-from openai import OpenAI
 from any_llm import completion
 
 # Docker Compose pasa las variables de entorno automáticamente
