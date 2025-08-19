@@ -1,6 +1,6 @@
 # TZU - Threat Zero Utility 🛡️
 
-[![Version](https://img.shields.io/github/v/release/drneox/tzu)](https://github.com/drneox/tzu/releases)
+[![Version](https://img.shields.io/github/v/release/drneox/tzu?include_prereleases)](https://github.com/drneox/tzu/releases)
 [![Build Status](https://img.shields.io/github/actions/workflow/status/drneox/tzu/python-app-test.yml)](https://github.com/drneox/tzu/actions/workflows/python-app-test.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
