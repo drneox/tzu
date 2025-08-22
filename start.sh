@@ -35,9 +35,87 @@ cd docker
 $COMPOSE_CMD up -d --build
 cd ..
 
-# Wait briefly for services to come up
+# Function to check container status
+check_container_status() {
+    local compose_cmd="$1"
+    local max_attempts=30
+    local attempt=1
+    
+    echo "⏳ Waiting for containers to start..."
+    
+    while [ $attempt -le $max_attempts ]; do
+        cd docker
+        
+        # Get container status
+        local containers_info=$($compose_cmd ps --format "table {{.Service}}\t{{.Status}}" 2>/dev/null)
+        local all_running=true
+        local failed_services=""
+        
+        # Check each expected service
+        for service in postgresql backend frontend nginx; do
+            local service_status=$(echo "$containers_info" | grep "^$service" | awk '{print $2}')
+            
+            if [[ -z "$service_status" ]]; then
+                all_running=false
+                failed_services="$failed_services $service(not_found)"
+            elif [[ "$service_status" != "running" ]] && [[ "$service_status" != "Up" ]] && [[ ! "$service_status" =~ ^Up ]]; then
+                all_running=false
+                failed_services="$failed_services $service($service_status)"
+            fi
+        done
+        
+        cd ..
+        
+        if [ "$all_running" = true ]; then
+            echo "✅ All containers are running"
+            return 0
+        else
+            if [ $attempt -eq $max_attempts ]; then
+                echo "❌ Container validation failed after $max_attempts attempts"
+                echo "❌ Failed services:$failed_services"
+                return 1
+            fi
+            echo "⏳ Attempt $attempt/$max_attempts: Waiting for containers to be ready..."
+            sleep 5
+            attempt=$((attempt + 1))
+        fi
+    done
+}
+
+# Function to check health status for services with healthchecks
+check_health_status() {
+    local compose_cmd="$1"
+    
+    echo "🔍 Checking service health..."
+    
+    cd docker
+    
+    # Check postgresql health (it has a healthcheck)
+    local pg_health=$($compose_cmd ps postgresql --format "table {{.Status}}" 2>/dev/null | tail -n +2)
+    
+    cd ..
+    
+    if [[ "$pg_health" =~ "healthy" ]]; then
+        echo "✅ PostgreSQL is healthy"
+        return 0
+    else
+        echo "⚠️  PostgreSQL health check: $pg_health"
+        # Don't fail here, just warn - container might still be starting
+        return 0
+    fi
+}
+
+# Wait for containers to start and validate their status
 echo "⏳ Waiting for system initialization..."
-sleep 10
+if ! check_container_status "$COMPOSE_CMD"; then
+    echo "❌ Failed to start all containers properly"
+    echo "💡 Try running: cd docker && $COMPOSE_CMD logs"
+    echo "💡 Or check individual container status: cd docker && $COMPOSE_CMD ps"
+    exit 1
+fi
+
+# Check health status
+check_health_status "$COMPOSE_CMD"
 
 # Get backend logs to capture credentials
 echo "🔧 Capturing initialization credentials..."
