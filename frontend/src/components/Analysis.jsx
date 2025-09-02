@@ -39,31 +39,37 @@ const handleTextareaResize = (event) => {
 const calculateInherentRisk = (risk) => {
   if (!risk) return 0;
   
+  // Helper function to ensure numeric values
+  const toNumber = (val) => {
+    const num = parseFloat(val);
+    return isNaN(num) ? 0 : num;
+  };
+  
   // OWASP Risk Rating: (Likelihood + Impact) / 2
   const likelihoodFactors = [
     // Threat Agent Factors
-    risk.skill_level || 0,
-    risk.motive || 0,
-    risk.opportunity || 0,
-    risk.size || 0,
+    toNumber(risk.skill_level || 0),
+    toNumber(risk.motive || 0),
+    toNumber(risk.opportunity || 0),
+    toNumber(risk.size || 0),
     // Vulnerability Factors
-    risk.ease_of_discovery || 0,
-    risk.ease_of_exploit || 0,
-    risk.awareness || 0,
-    risk.intrusion_detection || 0
+    toNumber(risk.ease_of_discovery || 0),
+    toNumber(risk.ease_of_exploit || 0),
+    toNumber(risk.awareness || 0),
+    toNumber(risk.intrusion_detection || 0)
   ];
   
   const impactFactors = [
     // Technical Impact
-    risk.loss_of_confidentiality || 0,
-    risk.loss_of_integrity || 0,
-    risk.loss_of_availability || 0,
-    risk.loss_of_accountability || 0,
+    toNumber(risk.loss_of_confidentiality || 0),
+    toNumber(risk.loss_of_integrity || 0),
+    toNumber(risk.loss_of_availability || 0),
+    toNumber(risk.loss_of_accountability || 0),
     // Business Impact
-    risk.financial_damage || 0,
-    risk.reputation_damage || 0,
-    risk.non_compliance || 0,
-    risk.privacy_violation || 0
+    toNumber(risk.financial_damage || 0),
+    toNumber(risk.reputation_damage || 0),
+    toNumber(risk.non_compliance || 0),
+    toNumber(risk.privacy_violation || 0)
   ];
   
   const likelihood = likelihoodFactors.reduce((acc, val) => acc + val, 0) / likelihoodFactors.length;
