@@ -168,7 +168,9 @@ const Analysis = () => {
   const getRiskValue = (threatId) => {
     const risk = inherentRisks[threatId];
     if (risk === undefined || risk === null) return 0;
-    return typeof risk === 'number' ? risk : parseFloat(risk) || 0;
+    const numericRisk = typeof risk === 'number' ? risk : parseFloat(risk) || 0;
+    // Ensure consistent 1 decimal place formatting
+    return parseFloat(numericRisk.toFixed(1));
   };
   
   // Función helper para obtener el valor numérico del riesgo residual
