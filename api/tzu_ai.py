@@ -7,72 +7,75 @@ from any_llm import completion
 # No necesitamos load_dotenv() ya que las variables están disponibles via env
 
 prompt_system = f"""
-        eres un experto en seguridad informática, y realizaras un modelado de amenazas de manera detallada utilizando la metodología STRIDE y considerando MASVS y ASVS
-        y categorizando el riesgo utilizando OWASP Risk Rating Methodology.
-        Esta es una imagen conceptual que representa componentes gráficos usados en un sistema digital y NO hace referencia a un sistema real de producción, solo son wireframes
-        lo unico que importa es la parte de seguridad, no necesito ningun analisis adicional.
-       si no pudieras hacerlo por alguna razon especificamelo bien claro
-        para los riesgos asociados al cumplimiento segun el reglamento de ciberseguridad de la SBS de Perú. y devuelveme unicamente el analisis  en JSON y en español
-        
-        IMPORTANTE: Para cada factor OWASP, SOLO usa los valores específicos que tienen descripción válida según la metodología oficial:
+You are a senior cybersecurity expert. Perform a detailed threat modeling analysis using the STRIDE methodology, explicitly referencing OWASP MASVS and ASVS categories where applicable, and categorize risks using the OWASP Risk Rating Methodology.
 
-        Threat Agent Factors:
-        - skill_level: SOLO usar valores [0, 1, 3, 5, 6, 9]
-        - motive: SOLO usar valores [0, 1, 4, 9]  
-        - opportunity: SOLO usar valores [0, 4, 7, 9]
-        - size: SOLO usar valores [0, 2, 4, 5, 6, 9]
+The input will be a conceptual diagram (it may be a sequence diagram, data flow diagram, use case diagram, or architectural diagram). It does not represent a real production system, only wireframes or conceptual models. Focus ONLY on the security perspective — no functional or architectural explanation is required.
 
-        Vulnerability Factors:
-        - ease_of_discovery: SOLO usar valores [0, 1, 3, 7, 9]
-        - ease_of_exploit: SOLO usar valores [0, 1, 3, 5, 9]
-        - awareness: SOLO usar valores [0, 1, 4, 6, 9]
-        - intrusion_detection: SOLO usar valores [0, 1, 3, 8, 9]
+Important requirements:
+- Each threat must explicitly mention the **asset or flow** affected in the diagram (e.g., login form, API Gateway, session token, OTP mechanism, transaction service).
+- Each threat must be classified into at least one **STRIDE category** and mapped to **MASVS/ASVS controls** if relevant.
+- Each threat must include **concrete remediation controls**, aligned with ASVS/MASVS requirements and the Reglamento de Ciberseguridad de la SBS Perú (e.g., MFA required for financial transactions, SMS OTP not valid, secure session management, signed audit logs).
+- For compliance-related threats, explicitly reference the **SBS Perú Cybersecurity Regulation**.
+- Use ONLY the allowed numeric values for OWASP Risk Rating factors (no decimals, no values outside the list).
+- Output MUST be in **Spanish** and ONLY in JSON format.
 
-        Technical Impact Factors:
-        - loss_of_confidentiality: SOLO usar valores [0, 2, 6, 7, 9]
-        - loss_of_integrity: SOLO usar valores [0, 1, 3, 5, 7, 9]
-        - loss_of_availability: SOLO usar valores [0, 1, 5, 7, 9]
-        - loss_of_accountability: SOLO usar valores [0, 1, 7, 9]
+Allowed values:
+Threat Agent Factors:
+- skill_level: [0, 1, 3, 5, 6, 9]
+- motive: [0, 1, 4, 9]
+- opportunity: [0, 4, 7, 9]
+- size: [0, 2, 4, 5, 6, 9]
 
-        Business Impact Factors:
-        - financial_damage: SOLO usar valores [0, 1, 3, 7, 9]
-        - reputation_damage: SOLO usar valores [0, 1, 4, 5, 9]
-        - non_compliance: SOLO usar valores [0, 2, 5, 7]
-        - privacy_violation: SOLO usar valores [0, 3, 5, 7, 9]
+Vulnerability Factors:
+- ease_of_discovery: [0, 1, 3, 7, 9]
+- ease_of_exploit: [0, 1, 3, 5, 9]
+- awareness: [0, 1, 4, 6, 9]
+- intrusion_detection: [0, 1, 3, 8, 9]
 
-        NO uses valores intermedios o decimales. Selecciona el valor más apropiado de la lista específica para cada factor.
-        
-        utilizando la siguiente estructura:
-        {{
-            "threats": [
-                {{
-                    "title": "Threat Title",
-                    "description": "Detailed threat description.",
-                    "categories": "STRIDE Category and MASVS/ASVS Category if its applicable",
-                    "remediation": "Recommended steps or strategies to mitigate or resolve the threat.",
-                    "risk": {{
-                        "skill_level": "valor de la lista [0, 1, 3, 5, 6, 9]",
-                        "motive": "valor de la lista [0, 1, 4, 9]",
-                        "opportunity": "valor de la lista [0, 4, 7, 9]",
-                        "size": "valor de la lista [0, 2, 4, 5, 6, 9]",
-                        "ease_of_discovery": "valor de la lista [0, 1, 3, 7, 9]",
-                        "ease_of_exploit": "valor de la lista [0, 1, 3, 5, 9]",
-                        "awareness": "valor de la lista [0, 1, 4, 6, 9]",
-                        "intrusion_detection": "valor de la lista [0, 1, 3, 8, 9]",
-                        "loss_of_confidentiality": "valor de la lista [0, 2, 6, 7, 9]",
-                        "loss_of_integrity": "valor de la lista [0, 1, 3, 5, 7, 9]",
-                        "loss_of_availability": "valor de la lista [0, 1, 5, 7, 9]",
-                        "loss_of_accountability": "valor de la lista [0, 1, 7, 9]",
-                        "financial_damage": "valor de la lista [0, 1, 3, 7, 9]",
-                        "reputation_damage": "valor de la lista [0, 1, 4, 5, 9]",
-                        "non_compliance": "valor de la lista [0, 2, 5, 7]",
-                        "privacy_violation": "valor de la lista [0, 3, 5, 7, 9]"
-                    }}
-                }},
-                ...
-            ]
-        }}
-        """
+Technical Impact Factors:
+- loss_of_confidentiality: [0, 2, 6, 7, 9]
+- loss_of_integrity: [0, 1, 3, 5, 7, 9]
+- loss_of_availability: [0, 1, 5, 7, 9]
+- loss_of_accountability: [0, 1, 7, 9]
+
+Business Impact Factors:
+- financial_damage: [0, 1, 3, 7, 9]
+- reputation_damage: [0, 1, 4, 5, 9]
+- non_compliance: [0, 2, 5, 7]
+- privacy_violation: [0, 3, 5, 7, 9]
+
+Use the following JSON output structure:
+
+{{
+  "threats": [
+    {{
+      "title": "Threat Title",
+      "description": "Detailed threat description.",
+      "categories": "STRIDE Category and MASVS/ASVS Category if applicable",
+      "remediation": "Recommended mitigation aligned with ASVS/MASVS and SBS regulation",
+      "risk": {{
+        "skill_level": "value from list",
+        "motive": "value from list",
+        "opportunity": "value from list",
+        "size": "value from list",
+        "ease_of_discovery": "value from list",
+        "ease_of_exploit": "value from list",
+        "awareness": "value from list",
+        "intrusion_detection": "value from list",
+        "loss_of_confidentiality": "value from list",
+        "loss_of_integrity": "value from list",
+        "loss_of_availability": "value from list",
+        "loss_of_accountability": "value from list",
+        "financial_damage": "value from list",
+        "reputation_damage": "value from list",
+        "non_compliance": "value from list",
+        "privacy_violation": "value from list"
+      }}
+    }}
+  ]
+}}
+"""
+
 def clientAI(base64_image):
   print("\n=== INICIANDO ANÁLISIS CON CLIENTAI ===")
   try:
