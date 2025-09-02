@@ -1384,7 +1384,7 @@ const Analysis = () => {
                       color: getRiskColorCSS(getRiskValue(threat.id)), 
                       fontSize: "16px"
                     }}>
-                      {getRiskValue(threat.id).toFixed(2)}
+                      {getRiskValue(threat.id).toFixed(1)}
                     </span>
                     <span style={{
                       fontSize: "10px",
