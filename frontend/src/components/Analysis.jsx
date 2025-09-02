@@ -70,7 +70,7 @@ const calculateInherentRisk = (risk) => {
   const impact = impactFactors.reduce((acc, val) => acc + val, 0) / impactFactors.length;
   
   const overallRisk = (likelihood + impact) / 2;
-  return overallRisk.toFixed(2);
+  return overallRisk;
 };
 
 // Función para calcular el riesgo residual basado en el riesgo inherente y la remediación
