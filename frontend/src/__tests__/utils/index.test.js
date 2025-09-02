@@ -29,23 +29,23 @@ describe('Utility Functions', () => {
   });
 
   describe('formatRisk', () => {
-    test('should format risk value with two decimal places', () => {
-      expect(formatRisk(5.123456)).toBe('5.12');
-      expect(formatRisk(3.999)).toBe('4.00');
-      expect(formatRisk(7)).toBe('7.00');
+    test('should format risk value with one decimal place', () => {
+      expect(formatRisk(5.123456)).toBe('5.1');
+      expect(formatRisk(3.999)).toBe('4.0');
+      expect(formatRisk(7)).toBe('7.0');
     });
 
     test('should handle edge cases', () => {
-      expect(formatRisk(0)).toBe('0.00');
-      expect(formatRisk(9.999)).toBe('10.00');
-      expect(formatRisk(0.001)).toBe('0.00');
+      expect(formatRisk(0)).toBe('0.0');
+      expect(formatRisk(9.999)).toBe('10.0');
+      expect(formatRisk(0.001)).toBe('0.0');
     });
 
     test('should handle invalid inputs', () => {
-      expect(formatRisk(null)).toBe('0.00');
-      expect(formatRisk(undefined)).toBe('0.00');
-      expect(formatRisk('invalid')).toBe('0.00');
-      expect(formatRisk(NaN)).toBe('0.00');
+      expect(formatRisk(null)).toBe('0.0');
+      expect(formatRisk(undefined)).toBe('0.0');
+      expect(formatRisk('invalid')).toBe('0.0');
+      expect(formatRisk(NaN)).toBe('0.0');
     });
   });
 

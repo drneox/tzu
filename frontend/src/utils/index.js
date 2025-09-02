@@ -21,7 +21,7 @@ export const formatDate = (date, locale = 'es') => {
 };
 
 /**
- * Format risk value to 2 decimal places
+ * Format risk value to 1 decimal place
  * @param {number|string|null|undefined} riskValue - The risk value to format
  * @returns {string} Formatted risk value
  */
@@ -29,10 +29,10 @@ export const formatRisk = (riskValue) => {
   const numValue = parseFloat(riskValue);
   
   if (isNaN(numValue) || riskValue === null || riskValue === undefined) {
-    return '0.00';
+    return '0.0';
   }
   
-  return numValue.toFixed(2);
+  return numValue.toFixed(1);
 };
 
 /**
