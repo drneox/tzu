@@ -12,8 +12,10 @@ const OwaspSelector = ({
   const options = getOwaspSelectOptions(factorName, locale) || [];
   
   const handleChange = (event) => {
+    const newValue = event.target.value;
     if (onChange) {
-      onChange(threatId);
+      // Pass threatId, new value and factor name
+      onChange(threatId, factorName, parseInt(newValue));
     }
   };
 
