@@ -1,90 +1,16 @@
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
-import { FaTrash, FaFilePdf, FaEdit, FaEye, FaChevronDown, FaChevronUp, FaTable, FaThLarge, FaEyeSlash } from "react-icons/fa";
+import React from 'react';
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
-import { Flex, TableContainer, Table, Tr, Td, Thead, Th, Tbody, Card, CardHeader, CardBody, Grid, GridItem, Text, Image as ChakraImage, Modal, ModalOverlay, ModalContent, ModalCloseButton, ModalBody, useDisclosure, Button, Icon, useToast, Tabs, TabList, TabPanels, Tab, TabPanel, Accordion, AccordionItem, AccordionButton, AccordionPanel, AccordionIcon, VStack, HStack, Divider, Badge, Collapse, useColorModeValue, Box, Tooltip, Switch, FormControl, FormLabel } from "@chakra-ui/react";
-import { fetchInformationSystemById, updateThreatsRiskBatch, createThreatForSystem, updateThreatResidualRisk, updateThreatsResidualRiskBatch, updateThreatRisk, deleteThreat } from "../services/index";
+import { useParams } from "react-router-dom";
+import { FaTrash, FaFilePdf, FaEdit, FaEye, FaTable, FaThLarge, FaEyeSlash } from "react-icons/fa";
+import { Flex, TableContainer, Table, Tr, Td, Thead, Th, Tbody, Card, CardHeader, CardBody, Grid, GridItem, Text, Image as ChakraImage, Modal, ModalOverlay, ModalContent, ModalCloseButton, ModalBody, useDisclosure, Button, useToast, Tabs, TabList, TabPanels, Tab, TabPanel, Accordion, AccordionItem, AccordionButton, AccordionPanel, AccordionIcon, VStack, HStack, Divider, Badge, useColorModeValue, Box, Tooltip, Switch, FormControl, FormLabel } from "@chakra-ui/react";
+import { fetchInformationSystemById, updateThreatsRiskBatch, createThreatForSystem, deleteThreat } from "../services/index";
 import { useLocalization, getOwaspSelectOptions } from '../hooks/useLocalization';
 import OwaspSelector from './OwaspSelector';
 import ReportGenerator from './ReportGenerator';
-
-// Función para calcular la altura del textarea basada en el contenido
-const calculateTextareaHeight = (text, width) => {
-  const lineHeight = 20; // altura de línea en px
-  const padding = 8; // padding vertical
-  const baseHeight = 40; // altura mínima
-  
-  if (!text) return baseHeight;
-  
-  // Estimar el número de líneas basado en la longitud del texto y el ancho
-  const averageCharsPerLine = Math.floor(width / 8); // aproximadamente 8px por carácter
-  const estimatedLines = Math.ceil(text.length / averageCharsPerLine);
-  const newLines = (text.match(/\n/g) || []).length;
-  
-  const totalLines = Math.max(estimatedLines, newLines + 1);
-  const calculatedHeight = Math.max(baseHeight, totalLines * lineHeight + padding * 2);
-  
-  return Math.min(calculatedHeight, 120); // máximo 120px de altura
-};
-
-// Función para auto-redimensionar textarea cuando el usuario escribe
-const handleTextareaResize = (event) => {
-  const textarea = event.target;
-  textarea.style.height = 'auto';
-  textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
-};
-
-// Función para calcular el riesgo inherente usando OWASP Risk Rating completo
-const calculateInherentRisk = (risk) => {
-  if (!risk) return 0;
-  
-  // OWASP Risk Rating: (Likelihood + Impact) / 2
-  const likelihoodFactors = [
-    // Threat Agent Factors
-    risk.skill_level || 0,
-    risk.motive || 0,
-    risk.opportunity || 0,
-    risk.size || 0,
-    // Vulnerability Factors
-    risk.ease_of_discovery || 0,
-    risk.ease_of_exploit || 0,
-    risk.awareness || 0,
-    risk.intrusion_detection || 0
-  ];
-  
-  const impactFactors = [
-    // Technical Impact
-    risk.loss_of_confidentiality || 0,
-    risk.loss_of_integrity || 0,
-    risk.loss_of_availability || 0,
-    risk.loss_of_accountability || 0,
-    // Business Impact
-    risk.financial_damage || 0,
-    risk.reputation_damage || 0,
-    risk.non_compliance || 0,
-    risk.privacy_violation || 0
-  ];
-  
-  const likelihood = likelihoodFactors.reduce((acc, val) => acc + val, 0) / likelihoodFactors.length;
-  const impact = impactFactors.reduce((acc, val) => acc + val, 0) / impactFactors.length;
-  
-  const overallRisk = (likelihood + impact) / 2;
-  return overallRisk.toFixed(2);
-};
-
-// Función para calcular el riesgo residual basado en el riesgo inherente y la remediación
-
-// Función para obtener el color del riesgo inherente según OWASP Risk Rating Scale
-// Esta función ha sido reemplazada por la definida dentro del componente
-
-// Función para obtener el label del riesgo según OWASP
-const getRiskLabel = (riskValue, t) => {
-  const value = parseFloat(riskValue);
-  if (value < 3) return t?.ui?.risk_low || "LOW";
-  if (value < 6) return t?.ui?.risk_medium || "MEDIUM"; 
-  return t?.ui?.risk_high || "HIGH";
-};
+import RiskDisplay from './RiskDisplay';
+import ResidualRiskSelector from './ResidualRiskSelector';
+import { calculateInherentRisk, getRiskColorCSS, getRiskLabel } from '../utils/riskCalculations';
+import { handleTextareaResize, calculateTextareaHeight } from '../utils/textareaHelpers';
 
 const Analysis = () => {
   const [isLoading, setIsLoading] = useState(true);
@@ -94,25 +20,17 @@ const Analysis = () => {
   const [deletedThreats, setDeletedThreats] = useState([]);
   const [inherentRisks, setInherentRisks] = useState({});
   const [residualRisks, setResidualRisks] = useState({});
-  const { locale, t, changeLanguage } = useLocalization();
+  const { locale, t } = useLocalization();
   const { isOpen, onOpen, onClose } = useDisclosure();
   const toast = useToast();
   
   // Hook para el generador de reportes
   const reportGenerator = ReportGenerator();
   
-  // Hook para colores según el modo de color
+  // Hook for colors based on color mode
   const controlBg = useColorModeValue('gray.50', 'gray.700');
   
-  // Función para obtener el label del riesgo según OWASP (dentro del componente para acceder a t)
-  const getRiskLabel = (riskValue) => {
-    const value = parseFloat(riskValue);
-    if (value < 3) return t?.ui?.risk_low || "BAJO";
-    if (value < 6) return t?.ui?.risk_medium || "MEDIO"; 
-    return t?.ui?.risk_high || "ALTO";
-  };
-
-  // Función para renderizar los tipos como badges separados
+  // Function to render types as separate badges
   const renderTypeBadges = (typeString) => {
     if (!typeString) return null;
     
@@ -129,89 +47,54 @@ const Analysis = () => {
     );
   };
   
-  // Estados para controlar la vista de la tabla
+  // States to control table view
   const [viewMode, setViewMode] = useState('compact'); // 'compact', 'detailed', 'tabs'
-  const [showRiskAssessment, setShowRiskAssessment] = useState(true); // Controla visibilidad de evaluación OWASP
-  const [expandedSections, setExpandedSections] = useState({
-    'threat_agent': true,
-    'vulnerability': false,
-    'technical': false,
-    'business': false
-  });
+  const [showRiskAssessment, setShowRiskAssessment] = useState(true); // Controls OWASP evaluation visibility
 
-  // Función helper para obtener colores de riesgo (mejorada)
-  const getRiskColor = (risk) => {
-    const numericRisk = typeof risk === 'string' ? parseFloat(risk) : risk;
-    // Usar los mismos umbrales que getRiskLabel para consistencia
-    if (numericRisk >= 6) return 'red.500';
-    if (numericRisk >= 3) return 'orange.500';
-    return 'green.500';
-  };
-  
-  // Función helper para obtener el colorScheme de Chakra UI
-  const getRiskColorScheme = (risk) => {
-    const numericRisk = typeof risk === 'string' ? parseFloat(risk) : risk;
-    if (numericRisk >= 6) return 'red';
-    if (numericRisk >= 3) return 'orange';
-    return 'green';
-  };
-  
-  // Función helper para obtener el color CSS del riesgo
-  const getRiskColorCSS = (risk) => {
-    const numericRisk = typeof risk === 'string' ? parseFloat(risk) : risk;
-    if (numericRisk >= 6) return '#e53e3e'; // red.500
-    if (numericRisk >= 3) return '#dd6b20'; // orange.500
-    return '#38a169'; // green.500
-  };
-
-  // Función helper para obtener el valor numérico del riesgo inherente
-  const getRiskValue = (threatId) => {
-    const risk = inherentRisks[threatId];
-    if (risk === undefined || risk === null) return 0;
-    return typeof risk === 'number' ? risk : parseFloat(risk) || 0;
-  };
-  
-  // Función helper para obtener el valor numérico del riesgo residual
-  const getResidualRiskValue = (threatId) => {
-    const risk = residualRisks[threatId];
-    if (risk === undefined || risk === null) return 1;
-    return typeof risk === 'number' ? risk : parseFloat(risk) || 1;
-  };
-  
-  // Función helper para obtener el riesgo actual (inherente si no hay remediación aplicada, residual si hay)
-  const getCurrentRiskValue = (threatId) => {
-    const threat = threats.find(t => t.id === threatId);
-    const isRemediationApplied = threat?.remediation?.status === true;
+  // Generic function to get risk values formatted to 1 decimal
+  const getRiskValue = (threatId, riskType = 'inherent') => {
+    let risk;
+    let defaultValue = 0;
     
-    console.log(`getCurrentRiskValue para threat ${threatId}:`, {
-      threatFound: !!threat,
-      remediationStatus: threat?.remediation?.status,
-      isRemediationApplied
-    });
-    
-    if (isRemediationApplied) {
-      // Si la remediación está aplicada, usar el riesgo residual
-      const residualRisk = getResidualRiskValue(threatId);
-      console.log(`Usando riesgo residual: ${residualRisk}`);
-      return residualRisk;
-    } else {
-      // Si la remediación no está aplicada, usar el riesgo inherente
-      const inherentRisk = getRiskValue(threatId);
-      console.log(`Usando riesgo inherente: ${inherentRisk}`);
-      return inherentRisk;
+    switch (riskType) {
+      case 'inherent':
+        risk = inherentRisks[threatId];
+        defaultValue = 0;
+        break;
+      case 'residual':
+        risk = residualRisks[threatId];
+        defaultValue = 1;
+        break;
+      case 'current':
+        const threat = threats.find(t => t.id === threatId);
+        const isRemediationApplied = threat?.remediation?.status === true;
+        return isRemediationApplied ? 
+          getRiskValue(threatId, 'residual') : 
+          getRiskValue(threatId, 'inherent');
+      default:
+        risk = inherentRisks[threatId];
+        defaultValue = 0;
     }
+    
+    if (risk === undefined || risk === null) return defaultValue;
+    const numericRisk = typeof risk === 'number' ? risk : parseFloat(risk) || defaultValue;
+    return parseFloat(numericRisk.toFixed(1));
   };
-  
-  // Función para actualizar manualmente el riesgo residual desde un select
+
+  // Helper functions for compatibility
+  const getResidualRiskValue = (threatId) => getRiskValue(threatId, 'residual');
+  const getCurrentRiskValue = (threatId) => getRiskValue(threatId, 'current');
+
+  // Function to manually update residual risk from a select
   const updateResidualRisk = (threatId, value) => {
-    const numericValue = parseFloat(value);
+    const numericValue = parseFloat(parseFloat(value).toFixed(1));
     setResidualRisks(prev => ({
       ...prev,
       [threatId]: numericValue
     }));
   };
   
-  // Función helper para crear un switch de remediación
+  // Helper function to create a remediation switch
   const createRemediationSwitch = (threat, size = "md") => {
     return (
       <Tooltip
@@ -258,170 +141,9 @@ const Analysis = () => {
     );
   };
   
-  // Función helper para crear un selector de riesgo residual con apariencia mejorada
+  // Helper function to create residual risk selector with improved appearance
   // Estilos centralizados para los componentes de riesgo
-  const riskDisplayStyles = {
-    container: {
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      gap: '2px',
-      width: '100%'
-    },
-    containerWithSelector: {
-      position: 'relative',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      gap: '2px',
-      width: '100%',
-      cursor: 'pointer'
-    },
-    numberValue: {
-      fontWeight: 'bold',
-      fontSize: '16px',
-      textAlign: 'center'
-    },
-    riskLabel: {
-      fontSize: '10px',
-      fontWeight: 'bold',
-      color: 'white',
-      padding: '2px 6px',
-      borderRadius: '8px',
-      textAlign: 'center',
-      minWidth: '50px'
-    },
-    invisibleSelect: {
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      width: '100%',
-      height: '100%',
-      opacity: 0,
-      cursor: 'pointer',
-      zIndex: 10
-    },
-    dropdownIcon: {
-      position: 'absolute',
-      top: '2px',
-      right: '2px',
-      fontSize: '8px',
-      pointerEvents: 'none',
-      zIndex: 5
-    }
-  };
-
-  const createResidualRiskSelector = (threatId, currentValue) => {
-    // Crear opciones más granulares (de 1 a 9 con incrementos de 0.5)
-    const options = [];
-    for (let i = 1; i <= 9; i += 0.5) {
-      options.push(i);
-    }
-    
-    const roundedValue = Math.round(currentValue * 2) / 2; // Redondea a múltiplos de 0.5
-    const riskColor = getRiskColorCSS(roundedValue);
-    const riskLabel = getRiskLabel(roundedValue);
-    
-    return (
-      <div style={riskDisplayStyles.containerWithSelector}>
-        {/* Valor numérico grande */}
-        <div style={{
-          ...riskDisplayStyles.numberValue,
-          color: riskColor
-        }}>
-          {roundedValue.toFixed(1)}
-        </div>
-        
-        {/* Label con color de fondo */}
-        <div style={{
-          ...riskDisplayStyles.riskLabel,
-          backgroundColor: riskColor
-        }}>
-          {riskLabel}
-        </div>
-        
-        {/* Select invisible superpuesto */}
-        <select 
-          value={roundedValue}
-          onChange={(e) => updateResidualRisk(threatId, e.target.value)}
-          style={riskDisplayStyles.invisibleSelect}
-        >
-          {options.map(value => (
-            <option 
-              key={value} 
-              value={value}
-            >
-              {value.toFixed(1)} - {getRiskLabel(value)}
-            </option>
-          ))}
-        </select>
-        
-        {/* Icono de dropdown */}
-        <div style={{
-          ...riskDisplayStyles.dropdownIcon,
-          color: riskColor
-        }}>
-          ▼
-        </div>
-      </div>
-    );
-  };
-
-  // Función para mostrar riesgo inherente con el mismo diseño que residual pero sin edición
-  const createInherentRiskDisplay = (riskValue) => {
-    const roundedValue = Math.round(riskValue * 2) / 2; // Redondea a múltiplos de 0.5
-    const riskColor = getRiskColorCSS(roundedValue);
-    const riskLabel = getRiskLabel(roundedValue);
-    
-    return (
-      <div style={riskDisplayStyles.container}>
-        {/* Valor numérico grande */}
-        <div style={{
-          ...riskDisplayStyles.numberValue,
-          color: riskColor
-        }}>
-          {roundedValue.toFixed(1)}
-        </div>
-        
-        {/* Label con color de fondo */}
-        <div style={{
-          ...riskDisplayStyles.riskLabel,
-          backgroundColor: riskColor
-        }}>
-          {riskLabel}
-        </div>
-      </div>
-    );
-  };
-
-  // Función para mostrar riesgo actual con el mismo diseño que residual pero sin edición
-  const createCurrentRiskDisplay = (riskValue) => {
-    const roundedValue = Math.round(riskValue * 2) / 2; // Redondea a múltiplos de 0.5
-    const riskColor = getRiskColorCSS(roundedValue);
-    const riskLabel = getRiskLabel(roundedValue);
-    
-    return (
-      <div style={riskDisplayStyles.container}>
-        {/* Valor numérico grande */}
-        <div style={{
-          ...riskDisplayStyles.numberValue,
-          color: riskColor
-        }}>
-          {roundedValue.toFixed(1)}
-        </div>
-        
-        {/* Label con color de fondo */}
-        <div style={{
-          ...riskDisplayStyles.riskLabel,
-          backgroundColor: riskColor
-        }}>
-          {riskLabel}
-        </div>
-      </div>
-    );
-  };
-
-  // Función helper para crear selectores OWASP optimizados
+  // Helper function to create optimized OWASP selectors
   const createOwaspSelector = (threat, fieldName, labelKey) => {
     const options = getOwaspSelectOptions(fieldName, locale);
     return (
@@ -444,31 +166,24 @@ const Analysis = () => {
     );
   };
 
-  // Función para alternar secciones
-  const toggleSection = (section) => {
-    setExpandedSections(prev => ({
-      ...prev,
-      [section]: !prev[section]
-    }));
-  };
-
-  // Función helper para mostrar notificaciones
+  // Function to toggle sections
+  // Helper function to show notifications
   const showNotification = (title, description, status = 'info') => {
     toast({
       title,
       description,
       status, // 'success', 'error', 'warning', 'info'
-      duration: status === 'error' ? 6000 : 4000, // Más tiempo para errores
+      duration: status === 'error' ? 6000 : 4000, // More time for errors
       isClosable: true,
       position: 'top-right',
-      variant: 'left-accent', // Estilo más elegante
+      variant: 'left-accent', // More elegant style
       containerStyle: {
         maxWidth: '400px'
       }
     });
   };
   
-  // Función para actualizar un campo específico de riesgo de amenaza
+  // Function to update a specific threat risk field
   const updateThreatRisk = (threatId, fieldName, value) => {
     // Actualizar el campo en la amenaza
     setThreats(prevThreats => 
@@ -481,7 +196,7 @@ const Analysis = () => {
           const newInherentRisk = calculateInherentRisk(updatedRisk);
           setInherentRisks(prev => ({
             ...prev,
-            [threatId]: newInherentRisk
+            [threatId]: parseFloat(newInherentRisk.toFixed(1))
           }));
           
           return updatedThreat;
@@ -490,7 +205,7 @@ const Analysis = () => {
       })
     );
     
-    // También actualizar en serviceData
+    // Also update in serviceData
     setServiceData(prevData => ({
       ...prevData,
       threats: prevData.threats.map(threat => {
@@ -521,16 +236,16 @@ const Analysis = () => {
         console.log(`Processing threat ${threat.id}, risk.residual_risk:`, threat.risk?.residual_risk);
         
         const inherentRiskValue = calculateInherentRisk(threat.risk);
-        initialInherentRisks[threat.id] = inherentRiskValue;
+        initialInherentRisks[threat.id] = parseFloat(inherentRiskValue.toFixed(1));
         
         // Usar el valor guardado del backend si existe, sino usar riesgo inherente como inicial
         let residualRiskValue;
         if (threat.risk && threat.risk.residual_risk !== null && threat.risk.residual_risk !== undefined) {
-          // Usar el valor guardado del backend
-          residualRiskValue = threat.risk.residual_risk;
+          // Usar el valor guardado del backend (asegurar 1 decimal)
+          residualRiskValue = parseFloat(parseFloat(threat.risk.residual_risk).toFixed(1));
         } else {
           // Si no hay valor guardado, usar el riesgo inherente como valor inicial
-          residualRiskValue = inherentRiskValue;
+          residualRiskValue = parseFloat(inherentRiskValue.toFixed(1));
         }
         
         initialResidualRisks[threat.id] = residualRiskValue;
@@ -542,91 +257,68 @@ const Analysis = () => {
     setIsLoading(false);
   };
   
-  // Función para actualizar el riesgo inherente cuando cambian los valores OWASP
-  const updateInherentRisk = async (threatId) => {
-    // Threat Agent Factors
-    const skill_level = Number(document.getElementById(`skill_level-${threatId}`)?.value || 0);
-    const motive = Number(document.getElementById(`motive-${threatId}`)?.value || 0);
-    const opportunity = Number(document.getElementById(`opportunity-${threatId}`)?.value || 0);
-    const size = Number(document.getElementById(`size-${threatId}`)?.value || 0);
+  // Function to update inherent risk when OWASP values change
+  const updateInherentRisk = (threatId, factorName, newValue) => {
+    console.log(`updateInherentRisk called for threat ${threatId}, factor ${factorName}, new value ${newValue}`);
     
-    // Vulnerability Factors
-    const ease_of_discovery = Number(document.getElementById(`ease_of_discovery-${threatId}`)?.value || 0);
-    const ease_of_exploit = Number(document.getElementById(`ease_of_exploit-${threatId}`)?.value || 0);
-    const awareness = Number(document.getElementById(`awareness-${threatId}`)?.value || 0);
-    const intrusion_detection = Number(document.getElementById(`intrusion_detection-${threatId}`)?.value || 0);
-    
-    // Technical Impact
-    const loss_of_confidentiality = Number(document.getElementById(`loss_of_confidentiality-${threatId}`)?.value || 0);
-    const loss_of_integrity = Number(document.getElementById(`loss_of_integrity-${threatId}`)?.value || 0);
-    const loss_of_availability = Number(document.getElementById(`loss_of_availability-${threatId}`)?.value || 0);
-    const loss_of_accountability = Number(document.getElementById(`loss_of_accountability-${threatId}`)?.value || 0);
-    
-    // Business Impact
-    const financial_damage = Number(document.getElementById(`financial_damage-${threatId}`)?.value || 0);
-    const reputation_damage = Number(document.getElementById(`reputation_damage-${threatId}`)?.value || 0);
-    const non_compliance = Number(document.getElementById(`non_compliance-${threatId}`)?.value || 0);
-    const privacy_violation = Number(document.getElementById(`privacy_violation-${threatId}`)?.value || 0);
-    
-    const likelihoodFactors = [skill_level, motive, opportunity, size, ease_of_discovery, ease_of_exploit, awareness, intrusion_detection];
-    const impactFactors = [loss_of_confidentiality, loss_of_integrity, loss_of_availability, loss_of_accountability, financial_damage, reputation_damage, non_compliance, privacy_violation];
-    
-    const likelihood = likelihoodFactors.reduce((acc, val) => acc + val, 0) / likelihoodFactors.length;
-    const impact = impactFactors.reduce((acc, val) => acc + val, 0) / impactFactors.length;
-    const overallRisk = (likelihood + impact) / 2;
-    
-    setInherentRisks(prev => ({
-      ...prev,
-      [threatId]: overallRisk
-    }));
-    
-    // Encontrar el threat para obtener el estado de remediación
-    const currentThreat = threats.find(threat => threat.id === threatId);
-    if (currentThreat) {
-      // No actualizar automáticamente el riesgo residual, mantener el valor manual del usuario
-      // El riesgo residual ahora se maneja completamente de forma manual
-    }
-
-    // Actualizar el riesgo en el backend
-    const riskData = {
-      skill_level,
-      motive,
-      opportunity,
-      size,
-      ease_of_discovery,
-      ease_of_exploit,
-      awareness,
-      intrusion_detection,
-      loss_of_confidentiality,
-      loss_of_integrity,
-      loss_of_availability,
-      loss_of_accountability,
-      financial_damage,
-      reputation_damage,
-      non_compliance,
-      privacy_violation
-    };
-
-    try {
-      await updateThreatRisk(threatId, riskData);
-
-      // Actualizar el estado local de las amenazas
-      setThreats(prevThreats => 
-        prevThreats.map(threat => 
-          threat.id === threatId 
-            ? { 
-                ...threat, 
-                risk: { ...threat.risk, ...riskData } 
-              }
-            : threat
-        )
-      );
-    } catch (error) {
-      console.error('Error updating risk:', error);
-    }
+    // Actualizar el threat en el estado con el nuevo valor
+    setThreats(prevThreats => {
+      const updatedThreats = prevThreats.map(threat => {
+        if (threat.id === threatId) {
+          const updatedRisk = {
+            ...threat.risk,
+            [factorName]: newValue
+          };
+          
+          // Calcular el nuevo riesgo inherente con los valores actualizados
+          const likelihoodFactors = [
+            updatedRisk.skill_level || 0,
+            updatedRisk.motive || 0,
+            updatedRisk.opportunity || 0,
+            updatedRisk.size || 0,
+            updatedRisk.ease_of_discovery || 0,
+            updatedRisk.ease_of_exploit || 0,
+            updatedRisk.awareness || 0,
+            updatedRisk.intrusion_detection || 0
+          ];
+          
+          const impactFactors = [
+            updatedRisk.loss_of_confidentiality || 0,
+            updatedRisk.loss_of_integrity || 0,
+            updatedRisk.loss_of_availability || 0,
+            updatedRisk.loss_of_accountability || 0,
+            updatedRisk.financial_damage || 0,
+            updatedRisk.reputation_damage || 0,
+            updatedRisk.non_compliance || 0,
+            updatedRisk.privacy_violation || 0
+          ];
+          
+          const likelihood = likelihoodFactors.reduce((acc, val) => acc + val, 0) / likelihoodFactors.length;
+          const impact = impactFactors.reduce((acc, val) => acc + val, 0) / impactFactors.length;
+          const overallRisk = (likelihood + impact) / 2;
+          
+          console.log(`Calculated risk for threat ${threatId}: Likelihood=${likelihood.toFixed(3)}, Impact=${impact.toFixed(3)}, Overall=${overallRisk.toFixed(3)}`);
+          
+          // Actualizar el riesgo inherente inmediatamente
+          setInherentRisks(prev => ({
+            ...prev,
+            [threatId]: parseFloat(overallRisk.toFixed(1))
+          }));
+          
+          return {
+            ...threat,
+            risk: updatedRisk
+          };
+        }
+        return threat;
+      });
+      
+      console.log(`Updated threats state for threat ${threatId}`);
+      return updatedThreats;
+    });
   };
   
-  // Función para actualizar el estado de la remediación
+  // Function to update remediation status
   const updateRemediationStatus = (threatId, status) => {
     console.log(`Actualizando remediación para threat ${threatId}: ${status ? 'aplicada' : 'removida'}`);
     
@@ -642,7 +334,7 @@ const Analysis = () => {
       )
     );
     
-    // También actualizar el estado de serviceData para mantener consistencia
+    // Also update serviceData state to maintain consistency
     setServiceData(prevData => ({
       ...prevData,
       threats: prevData.threats.map(threat => 
@@ -656,14 +348,14 @@ const Analysis = () => {
     }));
     
     // El riesgo residual ahora se maneja completamente de forma manual
-    // No se actualiza automáticamente cuando cambia el estado de remediación
+    // Does not update automatically when remediation status changes
     console.log(`Remediación ${status ? 'aplicada' : 'removida'} para threat ${threatId}. Riesgo residual se mantiene manual.`);
     
-    // Forzar re-render al actualizar el estado (esto debería triggerear getCurrentRiskValue)
+    // Force re-render by updating state (this should trigger getCurrentRiskValue)
     console.log('Estados actualizados, debería re-renderizar getCurrentRiskValue');
   };
   
-  // Función para generar informe PDF (usando el componente ReportGenerator)
+  // Function to generate PDF report (using ReportGenerator component)
   const generateReport = async () => {
     await reportGenerator.generateReport(
       serviceData,
@@ -679,6 +371,7 @@ const Analysis = () => {
   
   useEffect(() => {
     fetchData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, locale]);
   
   if (isLoading || !serviceData){
@@ -786,7 +479,7 @@ const Analysis = () => {
           </Button>
         </HStack>
         
-        {/* Toggle para ocultar/mostrar evaluación del riesgo (solo en vista detallada) */}
+        {/* Toggle to hide/show risk assessment (only in detailed view) */}
         {viewMode === 'detailed' && (
           <HStack spacing={2} ml={4}>
             <Divider orientation="vertical" height="30px" />
@@ -836,27 +529,36 @@ const Analysis = () => {
                               <Text fontSize="sm" minW="60px">
                                 <strong>{t?.ui?.inherent_risk || 'IR'}:</strong>
                               </Text>
-                              <Badge colorScheme={getRiskColorScheme(getRiskValue(threat.id))} fontSize="sm">
-                                {getRiskValue(threat.id).toFixed(1)}
-                              </Badge>
+                              <RiskDisplay 
+                                riskValue={inherentRisks[threat.id] || 0} 
+                                variant="badge" 
+                                size="sm" 
+                                showLabel={false}
+                              />
                             </HStack>
                             
                             <HStack minW="150px">
                               <Text fontSize="sm" minW="60px">
                                 <strong>{t?.ui?.residual_risk || 'RR'}:</strong>
                               </Text>
-                              <Badge colorScheme={getRiskColorScheme(getResidualRiskValue(threat.id))} fontSize="sm">
-                                {getResidualRiskValue(threat.id).toFixed(1)}
-                              </Badge>
+                              <RiskDisplay 
+                                riskValue={getResidualRiskValue(threat.id)} 
+                                variant="badge" 
+                                size="sm" 
+                                showLabel={false}
+                              />
                             </HStack>
                             
                             <HStack minW="150px">
                               <Text fontSize="sm" minW="60px">
                                 <strong>{t?.ui?.current_risk || 'CR'}:</strong>
                               </Text>
-                              <Badge colorScheme={getRiskColorScheme(getCurrentRiskValue(threat.id))} fontSize="sm">
-                                {getCurrentRiskValue(threat.id).toFixed(1)}
-                              </Badge>
+                              <RiskDisplay 
+                                riskValue={getCurrentRiskValue(threat.id)} 
+                                variant="badge" 
+                                size="sm" 
+                                showLabel={false}
+                              />
                             </HStack>
                           </HStack>
                           
@@ -930,15 +632,27 @@ const Analysis = () => {
                     {threat.title}
                   </Text>
                   <HStack spacing={1}>
-                    <Badge colorScheme={getRiskColorScheme(getRiskValue(threat.id))} fontSize="xs">
-                      IR: {getRiskValue(threat.id).toFixed(1)}
-                    </Badge>
-                    <Badge colorScheme={getRiskColorScheme(getResidualRiskValue(threat.id))} fontSize="xs">
-                      RR: {getResidualRiskValue(threat.id).toFixed(1)}
-                    </Badge>
-                    <Badge colorScheme={getRiskColorScheme(getCurrentRiskValue(threat.id))} fontSize="xs">
-                      CR: {getCurrentRiskValue(threat.id).toFixed(1)}
-                    </Badge>
+                    <RiskDisplay 
+                      riskValue={inherentRisks[threat.id] || 0} 
+                      variant="badge" 
+                      size="xs" 
+                      prefix="IR"
+                      showLabel={false}
+                    />
+                    <RiskDisplay 
+                      riskValue={getResidualRiskValue(threat.id)} 
+                      variant="badge" 
+                      size="xs" 
+                      prefix="RR"
+                      showLabel={false}
+                    />
+                    <RiskDisplay 
+                      riskValue={getCurrentRiskValue(threat.id)} 
+                      variant="badge" 
+                      size="xs" 
+                      prefix="CR"
+                      showLabel={false}
+                    />
                   </HStack>
                 </VStack>
               </Tab>
@@ -1072,19 +786,24 @@ const Analysis = () => {
                         <VStack align="flex-start" spacing={1}>
                           <Text fontWeight="bold">{t?.ui?.inherent_risk || 'Inherent Risk'}:</Text>
                           <Box width="100px">
-                            {createInherentRiskDisplay(getRiskValue(threat.id))}
+                            <RiskDisplay riskValue={inherentRisks[threat.id] || 0} variant="box" showLabel={false} />
                           </Box>
                         </VStack>
                         <VStack align="flex-start" spacing={1}>
                           <Text fontWeight="bold">{t?.ui?.residual_risk || 'Residual Risk'}:</Text>
                           <Box width="100px">
-                            {createResidualRiskSelector(threat.id, getResidualRiskValue(threat.id))}
+                            <ResidualRiskSelector 
+                              threatId={threat.id}
+                              currentValue={getResidualRiskValue(threat.id)}
+                              onUpdate={updateResidualRisk}
+                              size="sm"
+                            />
                           </Box>
                         </VStack>
                         <VStack align="flex-start" spacing={1}>
                           <Text fontWeight="bold">{t?.ui?.current_risk || 'Current Risk'}:</Text>
                           <Box width="100px">
-                            {createCurrentRiskDisplay(getCurrentRiskValue(threat.id))}
+                            <RiskDisplay riskValue={getCurrentRiskValue(threat.id)} variant="box" showLabel={false} />
                           </Box>
                         </VStack>
                       </HStack>
@@ -1101,7 +820,7 @@ const Analysis = () => {
       <TableContainer key={locale}>
         <Table border="2px solid gray" borderCollapse="collapse" overflowX='auto' whiteSpace='normal'>
           <Thead>
-            {/* Fila de título principal */}
+            {/* Main title row */}
             <Tr bg="blue.600" color="white" p="2">
               <Th rowSpan="3" p="4" shadow="md" borderRight="2px solid white" bg="blue.600" color="white">{t?.ui?.title || 'Title'}</Th>
               <Th rowSpan="3" p="4" shadow="md" maxWidth='100px' borderRight="2px solid white" bg="blue.600" color="white">{t?.ui?.type || 'Type'}</Th>
@@ -1116,7 +835,7 @@ const Analysis = () => {
               <Th rowSpan="3" p="4" shadow="md" maxWidth='100px' borderRight="2px solid white" bg="blue.600" color="white">{t?.ui?.applied || 'Remediada'}</Th>
               <Th rowSpan="3" p="4" shadow="md" maxWidth='100px' bg="blue.600" color="white">{t?.ui?.delete || 'Delete'}</Th>
             </Tr>
-            {/* Fila de categorías padre */}
+            {/* Parent categories row */}
             <Tr bg="blue.400" color="white" p="2">
               {showRiskAssessment && (
                 <>
@@ -1127,7 +846,7 @@ const Analysis = () => {
                 </>
               )}
             </Tr>
-            {/* Fila de parámetros específicos */}
+            {/* Specific parameters row */}
             <Tr bg="gray.300" color="white" p="4" fontSize="xs">
               {showRiskAssessment && (
                 <>
@@ -1384,7 +1103,7 @@ const Analysis = () => {
                       color: getRiskColorCSS(getRiskValue(threat.id)), 
                       fontSize: "16px"
                     }}>
-                      {getRiskValue(threat.id).toFixed(2)}
+                      {getRiskValue(threat.id).toFixed(1)}
                     </span>
                     <span style={{
                       fontSize: "10px",
@@ -1395,12 +1114,17 @@ const Analysis = () => {
                       borderRadius: "8px",
                       textAlign: "center"
                     }}>
-                      {getRiskLabel(getRiskValue(threat.id))}
+                      {getRiskLabel(getRiskValue(threat.id), t)}
                     </span>
                   </div>
                 </Td>
                 <Td p="4" shadow="md" style={{width: "100px", minWidth: "100px"}}>
-                  {createResidualRiskSelector(threat.id, getResidualRiskValue(threat.id))}
+                  <ResidualRiskSelector 
+                    threatId={threat.id}
+                    currentValue={getResidualRiskValue(threat.id)}
+                    onUpdate={updateResidualRisk}
+                    size="sm"
+                  />
                 </Td>
                 <Td p="4" shadow="md" style={{width: "100px", minWidth: "100px"}}>
                   <div style={{
@@ -1426,7 +1150,7 @@ const Analysis = () => {
                       borderRadius: '8px',
                       textAlign: "center"
                     }}>
-                      {getRiskLabel(getCurrentRiskValue(threat.id))}
+                      {getRiskLabel(getCurrentRiskValue(threat.id), t)}
                     </span>
                   </div>
                 </Td>
@@ -1463,7 +1187,7 @@ const Analysis = () => {
                         return { ...prev, threats: newThreats };
                       });
                       
-                      // También actualizar el estado threats independiente
+                      // Also update independent threats state
                       setThreats(prev => prev.filter(t => t.id !== threat.id));
                       
                       // Eliminar el riesgo inherente del threat eliminado
@@ -1473,7 +1197,7 @@ const Analysis = () => {
                         return updated;
                       });
                       
-                      // Mostrar notificación de eliminación
+                      // Show deletion notification
                       showNotification(
                         t?.ui?.threat_deleted_title || "Threat Marked for Deletion",
                         t?.ui?.threat_deleted || `"${threatTitle}" will be deleted when you save changes`,
@@ -1531,13 +1255,13 @@ const Analysis = () => {
                 threats: [...prev.threats, createdThreat]
               }));
               
-              // También actualizar el estado threats independiente
+              // Also update independent threats state
               setThreats(prev => [...prev, createdThreat]);
               
               // Inicializar el riesgo inherente para el nuevo threat
               setInherentRisks(prev => ({
                 ...prev,
-                [createdThreat.id]: calculateInherentRisk(createdThreat.risk)
+                [createdThreat.id]: parseFloat(calculateInherentRisk(createdThreat.risk).toFixed(1))
               }));
               
               showNotification(
@@ -1646,7 +1370,7 @@ const Analysis = () => {
         >{t?.ui?.save_all || 'Save All'}</button>
       </div>
 
-      {/* Modal para mostrar la imagen en tamaño completo */}
+      {/* Modal to show image in full size */}
       <Modal isOpen={isOpen} onClose={onClose} size="6xl" isCentered>
         <ModalOverlay bg="blackAlpha.800" />
         <ModalContent maxW="90vw" maxH="90vh" bg="transparent" boxShadow="none">
