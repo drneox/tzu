@@ -13,11 +13,16 @@ The input will be a conceptual diagram (it may be a sequence diagram, data flow 
 
 Important requirements:
 - Each threat must explicitly mention the **asset or flow** affected in the diagram (e.g., login form, API Gateway, session token, OTP mechanism, transaction service).
-- Each threat must be classified into at least one **STRIDE category** and mapped to **MASVS/ASVS controls** if relevant.
+- Each threat must be classified into exactly ONE **STRIDE category**: Spoofing, Tampering, Repudiation, Information Disclosure, Denial of Service, or Elevation of Privilege.
 - Each threat must include **concrete remediation controls**, aligned with ASVS/MASVS requirements and the Reglamento de Ciberseguridad de la SBS Perú (e.g., MFA required for financial transactions, SMS OTP not valid, secure session management, signed audit logs).
 - For compliance-related threats, explicitly reference the **SBS Perú Cybersecurity Regulation**.
 - Use ONLY the allowed numeric values for OWASP Risk Rating factors (no decimals, no values outside the list).
 - Output MUST be in **Spanish** and ONLY in JSON format.
+
+Reference format for remediation:
+- ASVS: "ASVS V[número].[subnúmero] - [nombre del control]" (e.g., "ASVS V2.6 - Multi-factor Authentication")
+- MASVS: "MASVS-[categoría]-[número] - [nombre del control]" (e.g., "MASVS-AUTH-2 - Session Management")
+- SBS: "SBS Reg. Ciberseguridad Art. [número] - [descripción breve]" (e.g., "SBS Reg. Ciberseguridad Art. 12 - Autenticación Multifactor")
 
 Allowed values:
 Threat Agent Factors:
@@ -51,8 +56,8 @@ Use the following JSON output structure:
     {{
       "title": "Threat Title",
       "description": "Detailed threat description.",
-      "categories": "STRIDE Category and MASVS/ASVS Category if applicable",
-      "remediation": "Recommended mitigation aligned with ASVS/MASVS and SBS regulation",
+      "type": "One STRIDE category: Spoofing | Tampering | Repudiation | Information Disclosure | Denial of Service | Elevation of Privilege",
+      "remediation": "Recommended mitigation with references (ASVS V[x].[y] - [control name], MASVS-[CAT]-[num] - [control name], SBS Reg. Ciberseguridad Art. [num] - [description])",
       "risk": {{
         "skill_level": "value from list",
         "motive": "value from list",

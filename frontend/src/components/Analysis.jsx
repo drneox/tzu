@@ -12,6 +12,35 @@ import ResidualRiskSelector from './ResidualRiskSelector';
 import { calculateInherentRisk, getRiskColorCSS, getRiskLabel } from '../utils/riskCalculations';
 import { handleTextareaResize, calculateTextareaHeight } from '../utils/textareaHelpers';
 
+// STRIDE Categories constants
+const STRIDE_CATEGORIES = [
+  { value: 'Spoofing', label: 'Spoofing' },
+  { value: 'Tampering', label: 'Tampering' },
+  { value: 'Repudiation', label: 'Repudiation' },
+  { value: 'Information Disclosure', label: 'Information Disclosure' },
+  { value: 'Denial of Service', label: 'Denial of Service' },
+  { value: 'Elevation of Privilege', label: 'Elevation of Privilege' }
+];
+
+// Helper function to get STRIDE display information
+const getStrideDisplayInfo = (strideCategory) => {
+  if (!strideCategory) return { letter: "-", fullName: "Seleccionar STRIDE" };
+  const category = STRIDE_CATEGORIES.find(cat => cat.value === strideCategory);
+  return {
+    letter: category ? category.value.charAt(0) : "-",
+    fullName: category ? category.value : ""
+  };
+};
+
+// Helper function to find matching STRIDE category from text
+const findStrideCategory = (typeString) => {
+  if (!typeString) return "";
+  const matchingCategory = STRIDE_CATEGORIES.find(category => 
+    typeString.toLowerCase().includes(category.value.toLowerCase())
+  );
+  return matchingCategory ? matchingCategory.value : "";
+};
+
 const Analysis = () => {
   const [isLoading, setIsLoading] = useState(true);
   const { id } = useParams();
@@ -34,6 +63,20 @@ const Analysis = () => {
   const renderTypeBadges = (typeString) => {
     if (!typeString) return null;
     
+    // Si es una categoría STRIDE única, mostrarla directamente
+    const isStrideCategory = STRIDE_CATEGORIES.some(category => 
+      category.value.toLowerCase() === typeString.toLowerCase()
+    );
+    
+    if (isStrideCategory) {
+      return (
+        <Badge colorScheme="blue" size="sm">
+          {typeString}
+        </Badge>
+      );
+    }
+    
+    // Para compatibilidad con datos existentes que pueden tener múltiples tipos
     const types = typeString.split(',').map(type => type.trim()).filter(type => type.length > 0);
     
     return (
@@ -163,6 +206,102 @@ const Analysis = () => {
           ))}
         </select>
       </VStack>
+    );
+  };
+
+  // State to track dropdown values
+  const [dropdownValues, setDropdownValues] = useState({});
+
+  // Initialize dropdown values when threats change
+  useEffect(() => {
+    if (threats && threats.length > 0) {
+      const initialValues = {};
+      threats.forEach(threat => {
+        initialValues[threat.id] = findStrideCategory(threat.type);
+      });
+      setDropdownValues(initialValues);
+    }
+  }, [threats]);
+
+  // Helper function to create STRIDE category selector
+  const createStrideSelector = (threat) => {
+    const currentValue = dropdownValues[threat.id] || "";
+    const displayInfo = getStrideDisplayInfo(currentValue);
+    
+    const strideStyles = {
+      container: {
+        position: 'relative',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: '50px',
+        height: '32px',
+        cursor: 'pointer',
+        border: '1px solid #E2E8F0',
+        borderRadius: '4px',
+        backgroundColor: 'white'
+      },
+      letterDisplay: {
+        fontSize: '14px',
+        fontWeight: 'bold',
+        color: '#2D3748',
+        lineHeight: '1'
+      },
+      invisibleSelect: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        width: '100%',
+        height: '100%',
+        opacity: 0,
+        cursor: 'pointer',
+        zIndex: 10,
+        appearance: 'none',
+        background: 'transparent',
+        border: 'none'
+      },
+      dropdownIcon: {
+        position: 'absolute',
+        bottom: '2px',
+        right: '2px',
+        fontSize: '6px',
+        pointerEvents: 'none',
+        zIndex: 5,
+        color: '#A0AEC0'
+      }
+    };
+    
+    const handleStrideChange = (e) => {
+      const newValue = e.target.value;
+      setDropdownValues(prev => ({
+        ...prev,
+        [threat.id]: newValue
+      }));
+    };
+    
+    return (
+      <div style={strideStyles.container} title={displayInfo.fullName}>
+        <div style={strideStyles.letterDisplay}>
+          {displayInfo.letter}
+        </div>
+        
+        <select
+          value={currentValue}
+          style={strideStyles.invisibleSelect}
+          id={`type-${threat.id}`}
+          onChange={handleStrideChange}
+        >
+          <option value="">Seleccionar categoría STRIDE</option>
+          {STRIDE_CATEGORIES.map(category => (
+            <option key={category.value} value={category.value}>
+              {category.value}
+            </option>
+          ))}
+        </select>
+        
+        <div style={strideStyles.dropdownIcon}>▼</div>
+      </div>
     );
   };
 
@@ -823,7 +962,7 @@ const Analysis = () => {
             {/* Main title row */}
             <Tr bg="blue.600" color="white" p="2">
               <Th rowSpan="3" p="4" shadow="md" borderRight="2px solid white" bg="blue.600" color="white">{t?.ui?.title || 'Title'}</Th>
-              <Th rowSpan="3" p="4" shadow="md" maxWidth='100px' borderRight="2px solid white" bg="blue.600" color="white">{t?.ui?.type || 'Type'}</Th>
+              <Th rowSpan="3" p="4" shadow="md" maxWidth='70px' borderRight="2px solid white" bg="blue.600" color="white">{t?.ui?.type || 'Type'}</Th>
               <Th rowSpan="3" p="4" shadow="md" borderRight="2px solid white" bg="blue.600" color="white">{t?.ui?.description || 'Description'}</Th>
               <Th rowSpan="3" p="4" shadow="md" maxWidth='200px' borderRight="2px solid white" bg="blue.600" color="white">{t?.ui?.remediation || 'Remediation'}</Th>
               {showRiskAssessment && (
@@ -889,20 +1028,8 @@ const Analysis = () => {
                     onInput={handleTextareaResize}
                   />
                 </Td>
-                <Td p="4" shadow="md" maxWidth="100px">
-                  <textarea 
-                    defaultValue={threat.type} 
-                    style={{
-                      width: "80px", 
-                      height: `${calculateTextareaHeight(threat.type, 80)}px`,
-                      resize: "vertical",
-                      overflow: "hidden",
-                      fontFamily: "inherit",
-                      fontSize: "14px"
-                    }} 
-                    id={`type-${threat.id}`}
-                    onInput={handleTextareaResize}
-                  />
+                <Td p="4" shadow="md" maxWidth="70px">
+                  {createStrideSelector(threat)}
                 </Td>
                 <Td p="4" shadow="md" style={{ whiteSpace: "normal", maxWidth: "200px", overflowWrap: "break-word" }}>
                   <textarea 
@@ -1299,7 +1426,7 @@ const Analysis = () => {
                 return {
                   threat_id: threat.id,
                   title: document.getElementById(`title-${threat.id}`)?.value ?? threat.title,
-                  type: document.getElementById(`type-${threat.id}`)?.value ?? threat.type,
+                  type: dropdownValues[threat.id] || threat.type,
                   description: document.getElementById(`description-${threat.id}`)?.value ?? threat.description,
                   remediation: { 
                     description: document.getElementById(`remediation-${threat.id}`)?.value ?? threat.remediation?.description ?? "",

@@ -1,26 +1,24 @@
 # API endpoints for TZU application
-import datetime
-import shutil
 import os
+import shutil
+import locale
+import zoneinfo
 from uuid import UUID
+from datetime import datetime, timedelta
+from typing import List, Optional
+
+# Third-party imports
 from fastapi import FastAPI, HTTPException, Depends, UploadFile, Body, status, Security, Path
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
-
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from pydantic import BaseModel, validator
-from sqlalchemy.orm import Session
-from sqlalchemy.orm import joinedload
-from datetime import datetime, timedelta
-from typing import List, Optional
+from sqlalchemy.orm import Session, joinedload
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 
 # Configure timezone from environment variable
-import locale
-import zoneinfo
-
 # Set timezone if TZ environment variable is set
 if 'TZ' in os.environ:
     try:
@@ -40,19 +38,7 @@ import utils
 import init_db
 from tzu_ai import clientAI
 from utils import save_image
-
-# Local imports
-import models
-import schemas
-import crud
-import database
-import utils
-import init_db
-
-from tzu_ai import clientAI
-from utils import save_image
-
-import os
+from stride_validator import normalize_stride_category, get_valid_stride_categories
 
 # Configuración basada en entorno
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
@@ -187,8 +173,6 @@ async def get_current_active_user(current_user: schemas.User = Depends(get_curre
     return current_user
 
 
-# models.Base.metadata.create_all(bind=database.engine)
-
 # Batch endpoint to update risk values for multiple threats at once
 class ThreatRiskUpdate(BaseModel):
     threat_id: str
@@ -273,7 +257,7 @@ async def create_threat_for_system(
     except Exception:
         raise HTTPException(status_code=400, detail="El id del sistema no es un UUID válido")
     
-        # Verify that system exists
+    # Verify that system exists
     system = db.query(models.InformationSystem).filter(models.InformationSystem.id == system_uuid).first()
     if not system:
         raise HTTPException(status_code=404, detail="Information System not found")
@@ -308,11 +292,18 @@ async def create_threat_for_system(
     remediation = crud.create_remediation(db, remediation_data.get('description', ''))
     
     # Crear threat
+    # Normalizar categoría STRIDE para amenaza manual
+    raw_type = threat_data.get('type', 'Spoofing')
+    normalized_type = normalize_stride_category(raw_type)
+    if not normalized_type:
+        print(f"⚠️ Warning: Invalid STRIDE category '{raw_type}' in manual threat, using 'Spoofing'")
+        normalized_type = 'Spoofing'
+    
     threat = crud.create_threat(
         db,
         title=threat_data.get('title', 'Nueva Amenaza'),
         description=threat_data.get('description', ''),
-        type=threat_data.get('type', 'Spoofing'),
+        type=normalized_type,
         information_system_id=system_uuid,
         risk_id=risk.id,
         remediation_id=remediation.id
@@ -345,8 +336,12 @@ async def evaluate(file: UploadFile, information_system_id: str, db: Session = D
     try:
         # Guardar la imagen y obtener base64
         print(f"Procesando archivo: {file.filename}")
-        image_b64 = save_image(file)
-        db_information_system = crud.attach_diagram(db, information_system_id=information_system_id, image_path=file.filename)
+        image_b64, saved_filename = save_image(file)
+        
+        if not image_b64 or not saved_filename:
+            return {"message": "Error al procesar la imagen", "success": False}
+            
+        db_information_system = crud.attach_diagram(db, information_system_id=information_system_id, image_path=saved_filename)
         
         # Obtener análisis de la IA
         print("Llamando a clientAI...")
@@ -372,9 +367,16 @@ async def evaluate(file: UploadFile, information_system_id: str, db: Session = D
         # Procesar las amenazas encontradas
         for i in result.threats:
             print(i)
+            
+            # Normalizar categoría STRIDE
+            normalized_type = normalize_stride_category(i.type)
+            if not normalized_type:
+                print(f"⚠️ Warning: Invalid STRIDE category '{i.type}' normalized to 'Spoofing'")
+                normalized_type = 'Spoofing'  # Default fallback
+            
             remediation = crud.create_remediation(db, i.remediation)
             risk = crud.create_risk(db, i.risk)
-            threat = crud.create_threat(db, i.title, i.description, i.categories, UUID(information_system_id), risk.id, remediation.id)
+            threat = crud.create_threat(db, i.title, i.description, normalized_type, UUID(information_system_id), risk.id, remediation.id)
         
         print(f"Se encontraron {len(result.threats)} amenazas")
         return {"information_system": db_information_system, "message": f"Se analizó el diagrama exitosamente y se encontraron {len(result.threats)} amenazas", "success": True}
@@ -388,10 +390,6 @@ async def evaluate(file: UploadFile, information_system_id: str, db: Session = D
 async def evaluate(information_system:schemas.InformationSystemBaseCreate, db: Session = Depends(database.get_db), current_user: models.User = Depends(get_current_user)):
     db_information_system = crud.create_information_system(db, information_system=information_system)
     return db_information_system
-
-#    result = clientAI(item)
-#    print(result.content)
-#    return JSONResponse(content=result.content)
 
 # Endpoint para actualizar los riesgos de todas las amenazas asociadas a un information_system_id
 @app.put("/information_systems/{information_system_id}/threats/risk/batch", response_model=list[schemas.Threat])

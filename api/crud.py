@@ -8,6 +8,9 @@ from typing import Optional, Dict, Union
 
 import schemas
 
+# Import STRIDE normalization function
+from stride_validator import normalize_stride_category
+
 # Security configuration for passwords and JWT
 import os
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -95,8 +98,17 @@ def update_threat_risk(db: Session, threat_id: str, data: dict):
     # Update Threat fields
     for key in ['title', 'type', 'description']:
         if key in data:
-            print(f"Actualizando Threat {key}: {getattr(threat, key)} -> {data[key]}")
-            setattr(threat, key, data[key])
+            value = data[key]
+            # Normalizar categoría STRIDE si es el campo 'type'
+            if key == 'type':
+                normalized_value = normalize_stride_category(value)
+                if not normalized_value:
+                    print(f"⚠️ Warning: Invalid STRIDE category '{value}' in update, using 'Spoofing'")
+                    value = 'Spoofing'
+                else:
+                    value = normalized_value
+            print(f"Actualizando Threat {key}: {getattr(threat, key)} -> {value}")
+            setattr(threat, key, value)
     # Update Remediation field
     if remediation and 'remediation' in data and isinstance(data['remediation'], dict):
         remediation_data = data['remediation']
