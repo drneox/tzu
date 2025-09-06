@@ -144,7 +144,7 @@ def update_threat_risk(db: Session, threat_id: str, data: dict):
     return threat
 
 def get_information_systems(db: Session,skip: int = 0, limit: int = 100):
-    return db.query(models.InformationSystem).offset(skip).limit(limit).all()
+    return db.query(models.InformationSystem).order_by(models.InformationSystem.datetime.desc()).offset(skip).limit(limit).all()
  
 def get_information_system(db: Session, information_system_id: str):
     return db.query(models.InformationSystem).options(
