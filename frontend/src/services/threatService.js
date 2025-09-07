@@ -5,6 +5,48 @@
 import apiClient from './apiClient';
 
 /**
+ * Obtiene un reporte de amenazas con filtros opcionales
+ * @param {Object} params - Parámetros de consulta
+ * @param {number} params.skip - Número de registros a omitir
+ * @param {number} params.limit - Límite de registros a obtener
+ * @param {Array} params.standards - Lista de estándares para filtrar
+ * @param {string} params.systemId - ID del sistema de información
+ * @param {string} params.riskLevel - Nivel de riesgo a filtrar
+ * @returns {Promise} - Promise con el reporte de amenazas filtradas
+ */
+export const getThreatsReport = async ({ 
+  skip = 0, 
+  limit = 1000, 
+  standards = null, 
+  systemId = null, 
+  riskLevel = null 
+} = {}) => {
+  try {
+    const params = { skip, limit };
+    
+    // Agregar parámetros de filtrado si están presentes
+    if (standards && standards.length > 0) {
+      params.standards = standards.join(',');
+    }
+    if (systemId) {
+      params.system_id = systemId;
+    }
+    if (riskLevel) {
+      params.risk_level = riskLevel;
+    }
+    
+    const response = await apiClient.get('/report', { params });
+    return response.data;
+  } catch (error) {
+    console.error('Error al obtener reporte de amenazas:', error);
+    throw new Error(error.response?.data?.detail || 'Error al obtener reporte de amenazas');
+  }
+};
+
+// Alias para compatibilidad con código existente
+export const getAllThreats = getThreatsReport;
+
+/**
  * Actualiza el riesgo de múltiples amenazas en un lote
  * @param {string} systemId - ID del sistema
  * @param {Array} updates - Lista de actualizaciones de riesgo

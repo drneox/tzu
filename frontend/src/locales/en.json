@@ -156,7 +156,8 @@
     },
     "menu": {
       "new_analysis": "New Analysis",
-      "archive": "Archive"
+      "archive": "Archive",
+      "reports": "Reports"
     },
     "loading": "Loading...",
     "system_information": "System Information",

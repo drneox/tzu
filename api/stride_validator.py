@@ -32,20 +32,20 @@ def normalize_stride_category(category_input):
     if not category_input or not isinstance(category_input, str):
         return None
     
-    # Limpiar espacios y normalizar
+    # Clean spaces and normalize
     cleaned = category_input.strip()
     
-    # Buscar coincidencia exacta (case-insensitive)
+    # Search for exact match (case-insensitive)
     for valid_category in VALID_STRIDE_CATEGORIES:
         if cleaned.lower() == valid_category.lower():
             return valid_category
     
-    # Buscar coincidencia parcial (por si la IA devuelve texto extra)
+    # Search for partial match (in case AI returns extra text)
     for valid_category in VALID_STRIDE_CATEGORIES:
         if valid_category.lower() in cleaned.lower():
             return valid_category
     
-    # Si no encuentra coincidencia, retornar None
+    # If no match found, return None
     return None
 
 def is_valid_stride_category(category):

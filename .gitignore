@@ -63,3 +63,4 @@ node_modules/
 *.tgz
 .vscode/settings.json
 api/test.db
+*.db

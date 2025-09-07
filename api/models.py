@@ -1,9 +1,10 @@
 import datetime
 import uuid
+import json
 
 from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, UUID, DateTime, Text, Float
 from sqlalchemy.orm import relationship
-
+from sqlalchemy.ext.hybrid import hybrid_property
 
 from database import Base
 
@@ -47,6 +48,27 @@ class Remediation(Base):
     id = Column(UUID, primary_key=True, default=uuid.uuid4)
     description = Column(Text)
     status = Column(Boolean, default=False)
+    # Tags flexibles para controles de seguridad (JSON array de strings)
+    # Ejemplos: ["ASVS-V2.1.1", "MASVS-MSTG-AUTH-1", "SBS-Circular-G-140-2009", "ISO27001-A.9.1.1"]
+    control_tags = Column(Text)  # JSON string array
+    
+    @hybrid_property
+    def control_tags_list(self):
+        """Convierte control_tags JSON string a lista de Python"""
+        if not self.control_tags or self.control_tags == "[]":
+            return []
+        try:
+            return json.loads(self.control_tags)
+        except (json.JSONDecodeError, TypeError):
+            return []
+    
+    @control_tags_list.setter
+    def control_tags_list(self, value):
+        """Convierte lista de Python a JSON string para almacenamiento"""
+        if value is None:
+            self.control_tags = None
+        else:
+            self.control_tags = json.dumps(value)
     
 
 class Threat(Base):

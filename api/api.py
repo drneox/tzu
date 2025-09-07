@@ -1,22 +1,18 @@
 # API endpoints for TZU application
 import os
-import shutil
-import locale
-import zoneinfo
+import json
 from uuid import UUID
 from datetime import datetime, timedelta
 from typing import List, Optional
 
 # Third-party imports
-from fastapi import FastAPI, HTTPException, Depends, UploadFile, Body, status, Security, Path
-from fastapi.responses import JSONResponse
+from fastapi import FastAPI, HTTPException, Depends, UploadFile, Body, status, Path, Query
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from pydantic import BaseModel, validator
+from pydantic import BaseModel
 from sqlalchemy.orm import Session, joinedload
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 
 # Configure timezone from environment variable
 # Set timezone if TZ environment variable is set
@@ -36,20 +32,20 @@ import crud
 import database
 import utils
 import init_db
+import control_tags
 from tzu_ai import clientAI
 from utils import save_image
 from stride_validator import normalize_stride_category, get_valid_stride_categories
 
-# Configuración basada en entorno
+# Environment-based configuration
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
-DEBUG = ENVIRONMENT == "development"  # Debug mode enabled only in development
 
 # JWT Configuration
 SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
 
-# Configurar documentación según el entorno
+# Configure documentation based on environment
 docs_url = "/docs" if ENVIRONMENT == "development" else None
 redoc_url = "/redoc" if ENVIRONMENT == "development" else None
 openapi_url = "/openapi.json" if ENVIRONMENT == "development" else None
@@ -57,18 +53,18 @@ openapi_url = "/openapi.json" if ENVIRONMENT == "development" else None
 app = FastAPI(
     title="TZU - Threat Zero Utility API",
     description="""
-    API para análisis de amenazas y gestión de riesgos de seguridad.
+    API for threat analysis and security risk management.
     
-    ## Autenticación
-    La mayoría de endpoints requieren autenticación JWT. Usa el endpoint `/auth/login` para obtener un token.
+    ## Authentication
+    Most endpoints require JWT authentication. Use the `/auth/login` endpoint to get a token.
     
-    ## Seguridad
-    - Todos los endpoints están protegidos con autenticación
-    - Implementa rate limiting en endpoints sensibles
-    - Validación estricta de datos de entrada
+    ## Security
+    - All endpoints are protected with authentication
+    - Implements rate limiting on sensitive endpoints
+    - Strict input data validation
     
-    ## Código fuente
-    Este proyecto es open source: [GitHub](https://github.com/drneox/tzu)
+    ## Source Code
+    This project is open source: [GitHub](https://github.com/drneox/tzu)
     """,
     version="1.0.0",
     contact={
@@ -79,7 +75,7 @@ app = FastAPI(
         "name": "MIT License",
         "url": "https://github.com/drneox/tzu/blob/main/LICENSE",
     },
-    # Configurar URLs de documentación según entorno
+    # Configure documentation URLs based on environment
     docs_url=docs_url,
     redoc_url=redoc_url,
     openapi_url=openapi_url,
@@ -103,37 +99,17 @@ app.add_middleware(
 # app.mount("/static", StaticFiles(directory="static"), name="static")
 app.mount("/diagrams", StaticFiles(directory="diagrams"), name="diagrams")
 
-# Health check endpoint
-@app.get("/health", status_code=200, tags=["Sistema"])
+# Endpoint to check database status
+@app.get("/health")
 async def health_check():
-    """Endpoint para verificar el estado de la aplicación"""
+    """
+    Endpoint to check application and database status
+    """
     try:
-        # Check database connectivity
-        db = database.SessionLocal()
-        try:
-            db.execute("SELECT 1")
-            db_status = "ok"
-        except Exception as e:
-            db_status = "error" if ENVIRONMENT == "production" else f"error: {str(e)}"
-        finally:
-            db.close()
-        
-        response = {
-            "status": "healthy",
-            "timestamp": datetime.utcnow().isoformat(),
-            "database": db_status,
-            "version": "1.0.0"
-        }
-        
-        # Solo incluir información detallada en desarrollo
-        if ENVIRONMENT == "development":
-            response["environment"] = ENVIRONMENT
-            response["debug"] = DEBUG
-            
-        return response
+        # Simple check to ensure the API is running
+        return {"status": "ok", "timestamp": datetime.now().isoformat()}
     except Exception as e:
-        error_detail = str(e) if ENVIRONMENT == "development" else "Service unavailable"
-        raise HTTPException(status_code=503, detail=error_detail)
+        raise HTTPException(status_code=500, detail=f"Health check failed: {str(e)}")
 
 # OAuth2 configuration
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
@@ -150,11 +126,11 @@ def get_db():
 async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="No se pudieron validar las credenciales",
+        detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM], audience="tzu-client")
         username: str = payload.get("sub")
         if username is None:
             raise credentials_exception
@@ -169,7 +145,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = De
 # Function to get active user
 async def get_current_active_user(current_user: schemas.User = Depends(get_current_user)):
     if not current_user.is_active:
-        raise HTTPException(status_code=400, detail="Usuario inactivo")
+        raise HTTPException(status_code=400, detail="Inactive user")
     return current_user
 
 
@@ -188,7 +164,7 @@ async def get_threats_by_system(
     try:
         system_uuid = UUID(information_system_id)
     except Exception:
-        raise HTTPException(status_code=400, detail="El id del sistema no es un UUID válido")
+        raise HTTPException(status_code=400, detail="The system id is not a valid UUID")
     
     threats = db.query(models.Threat).options(
         joinedload(models.Threat.risk),
@@ -205,12 +181,39 @@ async def get_threat(
     try:
         uuid_id = UUID(threat_id)
     except Exception:
-        raise HTTPException(status_code=400, detail="El id no es un UUID válido")
+        raise HTTPException(status_code=400, detail="The id is not a valid UUID")
     
     threat = db.query(models.Threat).filter(models.Threat.id == uuid_id).first()
     if not threat:
         raise HTTPException(status_code=404, detail="Threat not found")
     return threat
+
+@app.get("/report", response_model=list[schemas.ThreatWithSystem])
+async def get_threats_report(
+    skip: int = 0,
+    limit: int = 1000,
+    standards: str = None,  # List of comma-separated standards: "ASVS,MASVS,NIST"
+    system_id: str = None,  # Information system ID
+    risk_level: str = None,  # Risk level: "LOW", "MEDIUM", "HIGH", "CRITICAL"
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """Gets a report of all threats with optional filters"""
+    
+    # Process filtering parameters
+    standards_list = []
+    if standards:
+        standards_list = [s.strip().upper() for s in standards.split(',') if s.strip()]
+    
+    threats = crud.get_all_threats(
+        db, 
+        skip=skip, 
+        limit=limit,
+        standards=standards_list,
+        system_id=system_id,
+        risk_level=risk_level.upper() if risk_level else None
+    )
+    return threats
 
 @app.delete("/threat/{threat_id}")
 async def delete_threat(
@@ -221,7 +224,7 @@ async def delete_threat(
     try:
         uuid_id = UUID(threat_id)
     except Exception as e:
-        raise HTTPException(status_code=400, detail="El id no es un UUID válido")
+        raise HTTPException(status_code=400, detail="The id is not a valid UUID")
     
     threat = db.query(models.Threat).filter(models.Threat.id == uuid_id).first()
     if not threat:
@@ -229,7 +232,7 @@ async def delete_threat(
     
     db.delete(threat)
     db.commit()
-    return {"message": "Threat eliminado correctamente", "status": "success", "id": str(uuid_id)}
+    return {"message": "Threat deleted successfully", "status": "success", "id": str(uuid_id)}
 
 
 # Endpoint to update risk values for a threat
@@ -255,7 +258,7 @@ async def create_threat_for_system(
     try:
         system_uuid = UUID(information_system_id)
     except Exception:
-        raise HTTPException(status_code=400, detail="El id del sistema no es un UUID válido")
+        raise HTTPException(status_code=400, detail="The system id is not a valid UUID")
     
     # Verify that system exists
     system = db.query(models.InformationSystem).filter(models.InformationSystem.id == system_uuid).first()
@@ -289,19 +292,23 @@ async def create_threat_for_system(
     
     # Create remediation
     remediation_data = threat_data.get('remediation', {})
-    remediation = crud.create_remediation(db, remediation_data.get('description', ''))
+    control_tags = remediation_data.get('control_tags', [])
+    remediation = crud.create_remediation(
+        db, 
+        remediation_data.get('description', ''),
+        control_tags
+    )
     
-    # Crear threat
-    # Normalizar categoría STRIDE para amenaza manual
+    # Create threat
+    # Normalize STRIDE category for manual threat
     raw_type = threat_data.get('type', 'Spoofing')
     normalized_type = normalize_stride_category(raw_type)
     if not normalized_type:
-        print(f"⚠️ Warning: Invalid STRIDE category '{raw_type}' in manual threat, using 'Spoofing'")
         normalized_type = 'Spoofing'
     
     threat = crud.create_threat(
         db,
-        title=threat_data.get('title', 'Nueva Amenaza'),
+        title=threat_data.get('title', 'New Threat'),
         description=threat_data.get('description', ''),
         type=normalized_type,
         information_system_id=system_uuid,
@@ -309,7 +316,7 @@ async def create_threat_for_system(
         remediation_id=remediation.id
     )
     
-    # Hacer eager loading del threat creado
+    # Eager load the created threat
     created_threat = db.query(models.Threat).options(
         joinedload(models.Threat.risk),
         joinedload(models.Threat.remediation)
@@ -331,59 +338,52 @@ async def read_information_system(information_system_id: str, db: Session = Depe
 
 @app.post("/evaluate/{information_system_id}")
 async def evaluate(file: UploadFile, information_system_id: str, db: Session = Depends(database.get_db)):
-    print("=== COMENZANDO EVALUACIÓN DE DIAGRAMA ===")
-    
     try:
-        # Guardar la imagen y obtener base64
-        print(f"Procesando archivo: {file.filename}")
+        # Save the image and get base64
         image_b64, saved_filename = save_image(file)
         
         if not image_b64 or not saved_filename:
-            return {"message": "Error al procesar la imagen", "success": False}
+            return {"message": "Error processing image", "success": False}
             
         db_information_system = crud.attach_diagram(db, information_system_id=information_system_id, image_path=saved_filename)
         
-        # Obtener análisis de la IA
-        print("Llamando a clientAI...")
+        # Get AI analysis
         result = clientAI(image_b64)
-        print(f"Resultado de clientAI: tipo={type(result)}")
         
-        # Verificar que el resultado sea un objeto con la propiedad 'threats'
+        # Verify that result is an object with 'threats' property
         if isinstance(result, str):
-            # Si es un string, es un error o mensaje
-            print(f"El resultado es un string: '{result}'")
-            return {"information_system": db_information_system, "message": "No se pudo analizar el diagrama correctamente", "success": False}
+            # If it's a string, it's an error or message
+            return {"information_system": db_information_system, "message": "Could not analyze diagram correctly", "success": False}
         
-        # Verificar que tenga la propiedad threats y sea iterable
-        print(f"¿Tiene propiedad threats? {hasattr(result, 'threats')}")
-        if hasattr(result, 'threats'):
-            print(f"Número de amenazas encontradas: {len(result.threats)}")
-            print(f"Contenido de threats: {result.threats}")
-        
+        # Verify it has threats property and is iterable
         if not hasattr(result, 'threats') or not result.threats:
-            print("No se encontraron amenazas o la propiedad no existe")
-            return {"information_system": db_information_system, "message": "No se encontraron amenazas en el diagrama", "success": False}
+            return {"information_system": db_information_system, "message": "No threats found in diagram", "success": False}
             
-        # Procesar las amenazas encontradas
+        # Process found threats
         for i in result.threats:
-            print(i)
-            
-            # Normalizar categoría STRIDE
+            # Normalize STRIDE category
             normalized_type = normalize_stride_category(i.type)
             if not normalized_type:
-                print(f"⚠️ Warning: Invalid STRIDE category '{i.type}' normalized to 'Spoofing'")
                 normalized_type = 'Spoofing'  # Default fallback
             
-            remediation = crud.create_remediation(db, i.remediation)
+            # Extract remediation data - can be string or object
+            if hasattr(i.remediation, 'description'):
+                # New structure with object
+                remediation_desc = i.remediation.description
+                control_tags = getattr(i.remediation, 'control_tags', [])
+            else:
+                # Old structure with string
+                remediation_desc = str(i.remediation)
+                control_tags = []
+            
+            remediation = crud.create_remediation(db, remediation_desc, control_tags)
             risk = crud.create_risk(db, i.risk)
             threat = crud.create_threat(db, i.title, i.description, normalized_type, UUID(information_system_id), risk.id, remediation.id)
         
-        print(f"Se encontraron {len(result.threats)} amenazas")
-        return {"information_system": db_information_system, "message": f"Se analizó el diagrama exitosamente y se encontraron {len(result.threats)} amenazas", "success": True}
+        return {"information_system": db_information_system, "message": f"Diagram analyzed successfully and found {len(result.threats)} threats", "success": True}
     
     except Exception as e:
-        print(f"Error durante el análisis: {str(e)}")
-        return {"message": f"Error durante el procesamiento: {str(e)}", "success": False}
+        return {"message": f"Error during processing: {str(e)}", "success": False}
 
 
 @app.post("/new", response_model=schemas.InformationSystem)
@@ -391,29 +391,28 @@ async def evaluate(information_system:schemas.InformationSystemBaseCreate, db: S
     db_information_system = crud.create_information_system(db, information_system=information_system)
     return db_information_system
 
-# Endpoint para actualizar los riesgos de todas las amenazas asociadas a un information_system_id
+# Endpoint to update the risks of all threats associated with an information_system_id
 @app.put("/information_systems/{information_system_id}/threats/risk/batch", response_model=list[schemas.Threat])
 async def update_threats_risk_by_system(
     information_system_id: str,
-    risks: list = Body(...),
+    threats_data: list = Body(...),
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    # Convertir el id a UUID
+    # Convert the id to UUID
     try:
         system_uuid = UUID(information_system_id)
     except Exception:
-        raise HTTPException(status_code=400, detail="El id del sistema no es un UUID válido")
+        raise HTTPException(status_code=400, detail="The system id is not a valid UUID")
 
-    # Validar formato del payload
-    print(f"Payload recibido en batch: {risks}")
-    if not isinstance(risks, list):
-        raise HTTPException(status_code=400, detail="El payload debe ser una lista de objetos con threat_id y campos de riesgo")
-    for r in risks:
-        if not isinstance(r, dict) or 'threat_id' not in r:
-            raise HTTPException(status_code=400, detail="Cada objeto debe tener la clave 'threat_id'")
+    # Validate payload format
+    if not isinstance(threats_data, list):
+        raise HTTPException(status_code=400, detail="The payload must be a list of objects with threat_id and fields to update")
+    for t in threats_data:
+        if not isinstance(t, dict) or 'threat_id' not in t:
+            raise HTTPException(status_code=400, detail="Each object must have the 'threat_id' key")
 
-    # Filtrar threats usando el UUID correctamente
+    # Filter threats using the UUID correctly
     threats = db.query(models.Threat).options(
         joinedload(models.Threat.risk),
         joinedload(models.Threat.remediation)
@@ -421,39 +420,72 @@ async def update_threats_risk_by_system(
     threats_by_id = {str(threat.id): threat for threat in threats}
 
     updated_threats = []
-    for risk_update in risks:
-        threat_id = str(risk_update.get('threat_id'))
-        risk_data = risk_update.copy()
-        risk_data.pop('threat_id', None)
+    for threat_update in threats_data:
+        threat_id = str(threat_update.get('threat_id'))
+        threat_data = threat_update.copy()
+        threat_data.pop('threat_id', None)
+        
         threat = threats_by_id.get(threat_id)
         if not threat:
-            print(f"Amenaza con id {threat_id} no encontrada en el sistema {system_uuid}")
             continue
-        updated = crud.update_threat_risk(db, threat_id, risk_data)
-        if updated:
-            updated_threats.append(updated)
+        
+        # Update basic threat information if provided
+        if 'title' in threat_data:
+            threat.title = threat_data['title']
+        if 'type' in threat_data:
+            # Normalize STRIDE category
+            raw_type = threat_data['type']
+            normalized_type = normalize_stride_category(raw_type)
+            if normalized_type:
+                threat.type = normalized_type
+        if 'description' in threat_data:
+            threat.description = threat_data['description']
+        
+        # Update risk
+        risk_fields = ['skill_level', 'motive', 'opportunity', 'size', 'ease_of_discovery', 
+                      'ease_of_exploit', 'awareness', 'intrusion_detection', 'loss_of_confidentiality',
+                      'loss_of_integrity', 'loss_of_availability', 'loss_of_accountability',
+                      'financial_damage', 'reputation_damage', 'non_compliance', 'privacy_violation',
+                      'residual_risk']
+        
+        risk_data = {k: v for k, v in threat_data.items() if k in risk_fields}
+        if risk_data:
+            updated_risk = crud.update_threat_risk(db, threat_id, risk_data)
+        
+        # Update remediation if provided
+        if 'remediation' in threat_data:
+            remediation_data = threat_data['remediation']
+            updated_remediation = crud.update_remediation(
+                db, 
+                threat.remediation_id,
+                remediation_data.get('description', threat.remediation.description),
+                remediation_data.get('status', threat.remediation.status),
+                remediation_data.get('control_tags', threat.remediation.control_tags or [])
+            )
+        
+        # Refresh the threat with updated data
+        db.refresh(threat)
+        updated_threats.append(threat)
 
     if not updated_threats:
         raise HTTPException(status_code=404, detail="No threats updated")
     return updated_threats
 
-# Endpoints de autenticación
-@app.post("/users", response_model=schemas.User, tags=["Usuarios"])
+# Authentication endpoints
+@app.post("/users", response_model=schemas.User, tags=["Users"])
 def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     db_user = crud.get_user_by_username(db, username=user.username)
     if db_user:
-        raise HTTPException(status_code=400, detail="El nombre de usuario ya está registrado")
+        raise HTTPException(status_code=400, detail="Username is already registered")
     return crud.create_user(db=db, user=user)
 
-@app.post("/token", response_model=schemas.Token, tags=["Autenticación"])
+@app.post("/token", response_model=schemas.Token, tags=["Authentication"])
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
-    print("[DEBUG] Username recibido:", repr(form_data.username))
-    print("[DEBUG] Password recibido:", repr(form_data.password))
     user = crud.authenticate_user(db, form_data.username, form_data.password)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Nombre de usuario o contraseña incorrectos",
+            detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
@@ -465,3 +497,503 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
 @app.get("/users/me", response_model=schemas.User)
 async def read_users_me(current_user: schemas.User = Depends(get_current_active_user)):
     return current_user
+
+
+# Endpoints for security control tags
+# =====================================================
+# CONTROL TAGS HIERARCHY ENDPOINTS (specific routes first)
+# =====================================================
+
+@app.get("/control-tags/standards")
+async def get_available_standards(
+    current_user: schemas.User = Depends(get_current_active_user)
+):
+    """
+    Get list of all available security standards
+    """
+    try:
+        standards = crud.get_available_standards()
+        return {
+            "standards": standards,
+            "total_standards": len(standards)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error getting standards: {str(e)}")
+
+
+@app.get("/control-tags/hierarchy")
+async def get_control_tags_hierarchy(
+    current_user: schemas.User = Depends(get_current_active_user)
+):
+    """
+    Get complete summary of control tags hierarchy
+    """
+    try:
+        hierarchy = crud.get_control_tags_hierarchy_summary()
+        return hierarchy
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error getting hierarchy: {str(e)}")
+
+
+@app.get("/control-tags/by-standard/{standard}")
+async def get_control_tags_by_standard(
+    standard: str,
+    current_user: schemas.User = Depends(get_current_active_user)
+):
+    """
+    Get all control tags from a specific standard
+    """
+    try:
+        result = crud.get_control_tags_by_standard(standard)
+        if result["total_controls"] == 0:
+            raise HTTPException(
+                status_code=404, 
+                detail=f"Standard '{standard}' not found or has no controls"
+            )
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error getting controls by standard: {str(e)}")
+
+
+@app.get("/control-tags/by-standard/{standard}/category/{stride_category}")
+async def get_control_tags_by_standard_and_stride(
+    standard: str,
+    stride_category: str,
+    current_user: schemas.User = Depends(get_current_active_user)
+):
+    """
+    Get control tags from a specific standard filtered by STRIDE category
+    """
+    try:
+        result = crud.get_control_tags_by_standard_and_stride(standard, stride_category)
+        if result is None:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid STRIDE category '{stride_category}'"
+            )
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error getting controls by standard and STRIDE: {str(e)}")
+
+
+@app.post("/control-tags/categorize")
+async def categorize_control_tags(
+    tags: List[str] = Body(...),
+    current_user: schemas.User = Depends(get_current_active_user)
+):
+    """
+    Categorize a list of tags by standard
+    """
+    try:
+        categorized = control_tags.categorize_tags(tags)
+        return {
+            "input_tags": tags,
+            "categorized": categorized,
+            "total_by_standard": {k: len(v) for k, v in categorized.items() if v}
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error categorizing tags: {str(e)}")
+
+
+@app.get("/control-tags/suggestions/{stride_category}")
+async def get_control_tag_suggestions(
+    stride_category: str,
+    current_user: schemas.User = Depends(get_current_active_user)
+):
+    """
+    Get control tag suggestions based on STRIDE category with complete details
+    """
+    try:
+        # Get unformatted suggestions
+        raw_suggestions = control_tags.get_suggested_tags_for_stride(stride_category)
+        
+        # Format suggestions with standard in parentheses and get details
+        formatted_suggestions = []
+        detailed_suggestions = []
+        
+        for tag in raw_suggestions:
+            formatted_tag = control_tags.format_tag_for_display(tag)
+            formatted_suggestions.append(formatted_tag)
+            
+            # Get details for tooltip
+            tag_details = control_tags.get_tag_details(tag)
+            detailed_suggestions.append({
+                "tag": tag,
+                "formatted_tag": formatted_tag,
+                "standard": tag_details["standard"],
+                "category": tag_details["category"],
+                "title": tag_details["title"],
+                "description": tag_details["description"]
+            })
+        
+        return {
+            "stride_category": stride_category.upper(),
+            "suggested_tags": formatted_suggestions,  # For backward compatibility
+            "detailed_suggestions": detailed_suggestions,  # New response with details
+            "categorized": control_tags.categorize_tags(raw_suggestions)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error getting tag suggestions: {str(e)}")
+
+
+@app.get("/control-tags/validate/{tag}")
+async def validate_control_tag(
+    tag: str,
+    current_user: schemas.User = Depends(get_current_active_user)
+):
+    """
+    Validate control tag format
+    """
+    try:
+        is_valid = control_tags.validate_control_tag(tag)
+        return {
+            "tag": tag,
+            "is_valid": is_valid,
+            "message": "Valid control tag format" if is_valid else "Invalid control tag format"
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error validating tag: {str(e)}")
+
+
+# =====================================================
+# END CONTROL TAGS ENDPOINTS  
+# =====================================================
+
+
+# Endpoint to update remediation with tags
+@app.put("/remediations/{remediation_id}")
+async def update_remediation(
+    remediation_id: str,
+    remediation_update: schemas.RemediationUpdate,
+    current_user: schemas.User = Depends(get_current_active_user),
+    db: Session = Depends(database.get_db)
+):
+    """
+    Update a remediation including its control tags
+    """
+    try:
+        remediation = crud.update_remediation(
+            db,
+            remediation_id,
+            remediation_update.description,
+            remediation_update.status,
+            remediation_update.control_tags
+        )
+        
+        if not remediation:
+            raise HTTPException(status_code=404, detail="Remediation not found")
+        
+        return schemas.Remediation.from_orm(remediation)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error updating remediation: {str(e)}")
+
+
+# Specific endpoint to update control tags of a threat
+@app.put("/threats/{threat_id}/remediation/tags")
+async def update_threat_remediation_tags(
+    threat_id: str,
+    tags_update: dict,
+    current_user: schemas.User = Depends(get_current_active_user),
+    db: Session = Depends(database.get_db)
+):
+    """
+    Update only the control tags of a threat's remediation
+    """
+    try:
+        # Get the threat
+        threat = db.query(models.Threat).filter(models.Threat.id == threat_id).first()
+        if not threat:
+            raise HTTPException(status_code=404, detail="Threat not found")
+        
+        # Get associated remediation
+        if not threat.remediation_id:
+            raise HTTPException(status_code=404, detail="Threat has no associated remediation")
+        
+        remediation = db.query(models.Remediation).filter(
+            models.Remediation.id == threat.remediation_id
+        ).first()
+        
+        if not remediation:
+            raise HTTPException(status_code=404, detail="Remediation not found")
+        
+        # Update control tags
+        control_tags = tags_update.get('control_tags', [])
+        remediation.control_tags = json.dumps(control_tags) if control_tags else None
+        
+        db.commit()
+        db.refresh(remediation)
+        
+        return {
+            "threat_id": threat_id,
+            "remediation_id": remediation.id,
+            "control_tags": control_tags,
+            "message": "Control tags updated successfully"
+        }
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error updating control tags: {str(e)}")
+
+
+# Endpoints for advanced remediation filtering
+@app.get("/api/remediations/filter")
+async def filter_remediations(
+    control_standard: Optional[str] = None,  # ASVS, MASVS, SBS, ISO27001, NIST
+    control_tag: Optional[str] = None,       # Specific tag like "ASVS-V2.1.1"
+    stride_category: Optional[str] = None,   # S, T, R, I, D, E
+    status: Optional[bool] = None,           # True/False for completed status
+    information_system_id: Optional[str] = None,  # Filter by system
+    current_user: schemas.User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Filter remediations by multiple criteria:
+    - Control standard (ASVS, MASVS, etc.)
+    - Specific control tag
+    - STRIDE category of associated threat
+    - Remediation status
+    - Information system
+    """
+    try:
+        # Build base query with necessary joins
+        query = db.query(models.Remediation).join(
+            models.Threat, models.Threat.remediation_id == models.Remediation.id
+        )
+        
+        # Filter by information system
+        if information_system_id:
+            query = query.filter(models.Threat.information_system_id == information_system_id)
+        
+        # Filter by STRIDE category
+        if stride_category:
+            normalized_stride = normalize_stride_category(stride_category)
+            query = query.filter(models.Threat.type == normalized_stride)
+        
+        # Filter by remediation status
+        if status is not None:
+            query = query.filter(models.Remediation.status == status)
+        
+        # Filter by control tags
+        if control_standard:
+            query = query.filter(models.Remediation.control_tags.like(f'%{control_standard}-%'))
+        
+        if control_tag:
+            query = query.filter(models.Remediation.control_tags.like(f'%{control_tag}%'))
+        
+        remediations = query.distinct().all()
+        
+        # Convert results with additional information
+        result = []
+        for remediation in remediations:
+            # Get associated threats
+            threats = db.query(models.Threat).filter(
+                models.Threat.remediation_id == remediation.id
+            ).all()
+            
+            remediation_data = schemas.Remediation.from_orm(remediation).dict()
+            remediation_data['associated_threats'] = [
+                {
+                    'id': str(threat.id),
+                    'title': threat.title,
+                    'type': threat.type,  # STRIDE category
+                    'information_system_id': str(threat.information_system_id)
+                }
+                for threat in threats
+            ]
+            result.append(remediation_data)
+        
+        return {
+            "remediations": result,
+            "total": len(result),
+            "filters_applied": {
+                "control_standard": control_standard,
+                "control_tag": control_tag,
+                "stride_category": stride_category,
+                "status": status,
+                "information_system_id": information_system_id
+            }
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error filtering remediations: {str(e)}")
+
+
+@app.get("/api/remediations/by-control-standard/{standard}")
+async def get_remediations_by_control_standard(
+    standard: str,  # ASVS, MASVS, SBS, ISO27001, NIST
+    current_user: schemas.User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Get all remediations that have tags from a specific standard
+    """
+    try:
+        remediations = db.query(models.Remediation).filter(
+            models.Remediation.control_tags.like(f'%{standard}-%')
+        ).all()
+        
+        result = []
+        for remediation in remediations:
+            remediation_data = schemas.Remediation.from_orm(remediation).dict()
+            
+            # Filter tags from requested standard
+            if remediation.control_tags:
+                import json
+                all_tags = json.loads(remediation.control_tags)
+                filtered_tags = [tag for tag in all_tags if tag.startswith(f"{standard}-")]
+                remediation_data['filtered_control_tags'] = filtered_tags
+            
+            # Get associated threats
+            threats = db.query(models.Threat).filter(
+                models.Threat.remediation_id == remediation.id
+            ).all()
+            
+            remediation_data['threat_count'] = len(threats)
+            remediation_data['stride_categories'] = list(set([threat.type for threat in threats]))
+            
+            result.append(remediation_data)
+        
+        return {
+            "standard": standard,
+            "remediations": result,
+            "total": len(result)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error getting remediations by standard: {str(e)}")
+
+
+@app.get("/api/remediations/by-stride/{stride_category}")
+async def get_remediations_by_stride(
+    stride_category: str,  # S, T, R, I, D, E
+    current_user: schemas.User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Get all remediations associated with threats from a specific STRIDE category
+    """
+    try:
+        normalized_stride = normalize_stride_category(stride_category)
+        
+        # Search for threats from STRIDE category
+        threats = db.query(models.Threat).filter(
+            models.Threat.type == normalized_stride
+        ).all()
+        
+        # Get unique remediations
+        remediation_ids = list(set([threat.remediation_id for threat in threats]))
+        remediations = db.query(models.Remediation).filter(
+            models.Remediation.id.in_(remediation_ids)
+        ).all()
+        
+        result = []
+        for remediation in remediations:
+            remediation_data = schemas.Remediation.from_orm(remediation).dict()
+            
+            # Get threats from this category associated with the remediation
+            associated_threats = [t for t in threats if t.remediation_id == remediation.id]
+            remediation_data['stride_threats'] = [
+                {
+                    'id': str(threat.id),
+                    'title': threat.title,
+                    'description': threat.description,
+                    'information_system_id': str(threat.information_system_id)
+                }
+                for threat in associated_threats
+            ]
+            
+            # Suggest relevant tags for this STRIDE category
+            suggested_tags = control_tags.get_suggested_tags_for_stride(stride_category)
+            remediation_data['suggested_control_tags'] = suggested_tags
+            
+            result.append(remediation_data)
+        
+        return {
+            "stride_category": normalized_stride,
+            "remediations": result,
+            "total": len(result),
+            "suggested_tags": control_tags.get_suggested_tags_for_stride(stride_category)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error getting remediations by STRIDE: {str(e)}")
+
+
+@app.get("/api/remediations/statistics")
+async def get_remediation_statistics(
+    current_user: schemas.User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Get remediation statistics by control standards and STRIDE categories
+    """
+    try:
+        stats = crud.get_remediation_statistics(db)
+        return stats
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error getting statistics: {str(e)}")
+
+
+@app.get("/control-tags/existing")
+async def get_existing_control_tags(
+    current_user: schemas.User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Get all control tags that already exist in the system
+    """
+    try:
+        existing_tags = crud.get_all_existing_control_tags(db)
+        return {
+            "existing_tags": existing_tags,
+            "categorized": control_tags.categorize_tags(existing_tags),
+            "total": len(existing_tags)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error getting existing tags: {str(e)}")
+
+
+@app.get("/control-tags/search")
+async def search_control_tags(
+    query: str,
+    include_existing: bool = True,
+    include_predefined: bool = True,
+    current_user: schemas.User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Search control tags (existing + predefined)
+    """
+    try:
+        results = []
+        
+        # Search in predefined tags
+        if include_predefined:
+            predefined_tags = control_tags.search_predefined_tags(query)
+            results.extend(predefined_tags)
+        
+        # Enrich results with details
+        detailed_results = []
+        formatted_results = []
+        for tag in results[:20]:  # Limit to 20 results
+            tag_details = control_tags.get_tag_details(tag)
+            formatted_tag = control_tags.format_tag_for_display(tag)
+            
+            detailed_results.append({
+                "tag": formatted_tag,  # Tag with parentheses
+                "standard": tag_details["standard"],
+                "category": tag_details["category"],
+                "title": tag_details["title"],
+                "description": tag_details["description"]
+            })
+            formatted_results.append(formatted_tag)
+        
+        return {
+            "query": query,
+            "results": formatted_results,  # Tags with parentheses
+            "detailed_results": detailed_results,  # With formatted tags
+            "categorized": control_tags.categorize_tags(formatted_results),
+            "total": len(results)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error searching tags: {str(e)}")

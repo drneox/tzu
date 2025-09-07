@@ -8,7 +8,7 @@ class TestInformationSystemEndpoints:
     """Tests para sistemas de información"""
     
     def test_create_information_system(self, auth_headers):
-        """Test crear nuevo sistema de información"""
+        """Test creating new information system"""
         system_data = {
             "title": "Sistema de Prueba",
             "description": "Un sistema para testing"
@@ -22,7 +22,7 @@ class TestInformationSystemEndpoints:
         assert "id" in data
     
     def test_create_information_system_without_auth(self):
-        """Test crear sistema sin autenticación"""
+        """Test creating system without authentication"""
         system_data = {
             "title": "Sistema Sin Auth",
             "description": "No debería crearse"

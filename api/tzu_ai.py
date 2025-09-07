@@ -2,11 +2,43 @@ import json
 from types import SimpleNamespace
 import os
 from any_llm import completion
+import control_tags
 
 # Docker Compose pasa las variables de entorno automáticamente
 # No necesitamos load_dotenv() ya que las variables están disponibles via env
 
-prompt_system = f"""
+def generate_control_tags_examples():
+    """
+    Genera ejemplos dinámicos de control tags basados en las definiciones del sistema
+    """
+    examples = {}
+    stride_categories = ["Spoofing", "Tampering", "Repudiation", "Information Disclosure", "Denial of Service", "Elevation of Privilege"]
+    
+    for category in stride_categories:
+        try:
+            # Get suggested tags for each STRIDE category
+            suggested_tags = control_tags.get_suggested_tags_for_stride(category)
+            # Format tags with parentheses for AI display
+            formatted_tags = [control_tags.format_tag_for_display(tag) for tag in suggested_tags[:3]]  # Only first 3
+            examples[category] = formatted_tags
+        except:
+            # Fallback in case of error
+            examples[category] = ["V2.1.1 (ASVS)", "AUTH-1 (MASVS)", "SBS-2158-1 (SBS)"]
+    
+    return examples
+
+def clientAI(base64_image):
+  try:
+    # Generar ejemplos dinámicos de control tags
+    control_tag_examples = generate_control_tags_examples()
+    
+    # Construir ejemplos para el prompt
+    examples_text = ""
+    for category, tags in control_tag_examples.items():
+        examples_text += f"**{category} threats**: {', '.join(tags)}\n"
+    
+    # Create dynamic prompt with updated examples
+    dynamic_prompt = f"""
 You are a senior cybersecurity expert. Perform a detailed threat modeling analysis using the STRIDE methodology, explicitly referencing OWASP MASVS and ASVS categories where applicable, and categorize risks using the OWASP Risk Rating Methodology.
 
 The input will be a conceptual diagram (it may be a sequence diagram, data flow diagram, use case diagram, or architectural diagram). It does not represent a real production system, only wireframes or conceptual models. Focus ONLY on the security perspective — no functional or architectural explanation is required.
@@ -14,15 +46,22 @@ The input will be a conceptual diagram (it may be a sequence diagram, data flow 
 Important requirements:
 - Each threat must explicitly mention the **asset or flow** affected in the diagram (e.g., login form, API Gateway, session token, OTP mechanism, transaction service).
 - Each threat must be classified into exactly ONE **STRIDE category**: Spoofing, Tampering, Repudiation, Information Disclosure, Denial of Service, or Elevation of Privilege.
-- Each threat must include **concrete remediation controls**, aligned with ASVS/MASVS requirements and the Reglamento de Ciberseguridad de la SBS Perú (e.g., MFA required for financial transactions, SMS OTP not valid, secure session management, signed audit logs).
-- For compliance-related threats, explicitly reference the **SBS Perú Cybersecurity Regulation**.
+- Each threat must include **concrete remediation controls** with clear, actionable mitigation steps (e.g., implement multi-factor authentication, validate all inputs, use secure session management, maintain audit logs).
+- For compliance-related threats, explicitly reference the **SBS Perú Cybersecurity Regulation** in remediation description.
+- Each threat must include **control_tags** array with specific security control identifiers based on the threat type and remediation.
 - Use ONLY the allowed numeric values for OWASP Risk Rating factors (no decimals, no values outside the list).
 - Output MUST be in **Spanish** and ONLY in JSON format.
 
-Reference format for remediation:
-- ASVS: "ASVS V[número].[subnúmero] - [nombre del control]" (e.g., "ASVS V2.6 - Multi-factor Authentication")
-- MASVS: "MASVS-[categoría]-[número] - [nombre del control]" (e.g., "MASVS-AUTH-2 - Session Management")
-- SBS: "SBS Reg. Ciberseguridad Art. [número] - [descripción breve]" (e.g., "SBS Reg. Ciberseguridad Art. 12 - Autenticación Multifactor")
+Control Tags Guidelines:
+Generate appropriate control tags based on the STRIDE category and specific threat. Use these examples as reference:
+
+{examples_text}
+
+Remediation Format:
+- Write clear, actionable mitigation steps without control references in parentheses
+- Control references go in the separate control_tags array
+- Focus on specific implementation details and best practices
+- Example: "Implementar autenticación multifactor obligatoria para todas las transacciones financieras y validar la identidad del usuario mediante al menos dos factores diferentes."
 
 Allowed values:
 Threat Agent Factors:
@@ -57,7 +96,10 @@ Use the following JSON output structure:
       "title": "Threat Title",
       "description": "Detailed threat description.",
       "type": "One STRIDE category: Spoofing | Tampering | Repudiation | Information Disclosure | Denial of Service | Elevation of Privilege",
-      "remediation": "Recommended mitigation with references (ASVS V[x].[y] - [control name], MASVS-[CAT]-[num] - [control name], SBS Reg. Ciberseguridad Art. [num] - [description])",
+      "remediation": {{
+        "description": "Clear, actionable mitigation steps without control references. Focus on implementation details and best practices.",
+        "control_tags": ["V2.1.1 (ASVS)", "AUTH-1 (MASVS)", "SBS-2158-1 (SBS)"]
+      }},
       "risk": {{
         "skill_level": "value from list",
         "motive": "value from list",
@@ -80,16 +122,12 @@ Use the following JSON output structure:
   ]
 }}
 """
-
-def clientAI(base64_image):
-  print("\n=== INICIANDO ANÁLISIS CON CLIENTAI ===")
-  try:
-    # Obtener respuesta de la IA
-    print("Enviando imagen a la API...")
+    
+    # Get AI response
     response = completion(
       model="openai/gpt-4o", # <provider_id>/<model_id>
       messages=[
-        {"role": "system", "content": "%s" % prompt_system},
+        {"role": "system", "content": "%s" % dynamic_prompt},
         {"role": "user", "content": [
         {"type": "image_url",
           "image_url":{
@@ -98,13 +136,11 @@ def clientAI(base64_image):
       ],
       "max_tokens": 3000000}
     ])
-    print("Respuesta recibida de la API")
     
     # Extraer el texto de la respuesta
     response_text = response.choices[0].message.content.strip()
     json_start = response_text.find("{")
     json_end = response_text.rfind("}")
-    print(response_text)
     
     # Extraer y procesar el JSON de la respuesta
     if json_start != -1 and json_end != -1:
@@ -113,32 +149,25 @@ def clientAI(base64_image):
         # Intentar parsear el JSON
         threat_analysis_object = json.loads(json_content, object_hook=lambda d: SimpleNamespace(**d))
         
-        # Verificar que el objeto tiene la estructura esperada
+        # Verify that object has expected structure
         if not hasattr(threat_analysis_object, 'threats'):
-          print("La respuesta no contiene la propiedad 'threats'")
-          print(f"Propiedades disponibles: {dir(threat_analysis_object)}")
-          # Crear objeto con estructura correcta pero sin amenazas
+          # Create object with correct structure but no threats
           empty_obj = SimpleNamespace()
           empty_obj.threats = []
           return empty_obj
         
-        print(f"Objeto de análisis de amenazas encontrado con {len(threat_analysis_object.threats)} amenazas")
-        print(f"Primera amenaza (si existe): {threat_analysis_object.threats[0] if threat_analysis_object.threats else 'Ninguna'}")
         return threat_analysis_object
       except json.JSONDecodeError as e:
-        print(f"Error al decodificar JSON: {str(e)}")
         # Retornar objeto vacío con estructura correcta
         empty_obj = SimpleNamespace()
         empty_obj.threats = []
         return empty_obj
     else:
-      print("No se encontró contenido JSON en la respuesta")
       # Retornar objeto vacío con estructura correcta
       empty_obj = SimpleNamespace()
       empty_obj.threats = []
       return empty_obj
   except Exception as e:
-    print(f"Error en el procesamiento de la IA: {str(e)}")
     # Retornar objeto vacío con estructura correcta
     empty_obj = SimpleNamespace()
     empty_obj.threats = []

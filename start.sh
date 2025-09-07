@@ -105,6 +105,42 @@ check_health_status() {
     fi
 }
 
+# Function to wait for backend initialization to complete
+wait_for_backend_initialization() {
+    local compose_cmd="$1"
+    local max_attempts=20
+    local attempt=1
+    
+    echo "⏳ Waiting for backend initialization to complete..."
+    
+    while [ $attempt -le $max_attempts ]; do
+        cd docker
+        
+        # Check if backend has completed initialization
+        local backend_logs=$($compose_cmd logs backend 2>&1)
+        
+        cd ..
+        
+        # Look for signs that initialization is complete
+        if echo "$backend_logs" | grep -q "Uvicorn running on" && echo "$backend_logs" | grep -q "Application startup complete"; then
+            echo "✅ Backend initialization completed"
+            # Give it a moment more to ensure all logs are captured
+            sleep 3
+            return 0
+        fi
+        
+        if [ $attempt -eq $max_attempts ]; then
+            echo "⚠️  Backend initialization check timed out after $max_attempts attempts"
+            echo "⚠️  Proceeding anyway - logs may be incomplete"
+            return 0
+        fi
+        
+        echo "⏳ Attempt $attempt/$max_attempts: Waiting for backend to complete initialization..."
+        sleep 3
+        attempt=$((attempt + 1))
+    done
+}
+
 # Wait for containers to start and validate their status
 echo "⏳ Waiting for system initialization..."
 if ! check_container_status "$COMPOSE_CMD"; then
@@ -116,6 +152,9 @@ fi
 
 # Check health status
 check_health_status "$COMPOSE_CMD"
+
+# Wait for backend initialization to complete
+wait_for_backend_initialization "$COMPOSE_CMD"
 
 # Get backend logs to capture credentials
 echo "🔧 Capturing initialization credentials..."

@@ -19,6 +19,9 @@ const Navigation = () => {
       <Link to="/" style={navLinkStyle}>
         <h3>{t.ui.menu.archive}</h3>
       </Link>
+      <Link to="/reports" style={navLinkStyle}>
+        <h3>{t.ui.menu.reports}</h3>
+      </Link>
     </Flex>
   );
 };

@@ -1,14 +1,14 @@
 """
-Tests para endpoints de autenticación y usuarios
+Tests for authentication and user endpoints
 """
 import pytest
 from tests.conftest import client
 
 class TestAuthEndpoints:
-    """Tests para autenticación"""
+    """Tests for authentication"""
     
     def test_create_user(self):
-        """Test crear un nuevo usuario"""
+        """Test creating a new user"""
         user_data = {
             "username": "newuser",
             "email": "newuser@example.com",
@@ -21,10 +21,10 @@ class TestAuthEndpoints:
         data = response.json()
         assert data["username"] == "newuser"
         assert "id" in data
-        assert "password" not in data  # No debe devolver la contraseña
+        assert "password" not in data  # Should not return password
     
     def test_create_duplicate_user(self):
-        """Test crear usuario duplicado"""
+        """Test creating duplicate user"""
         user_data = {
             "username": "duplicateuser",
             "email": "duplicate@example.com",
@@ -32,17 +32,17 @@ class TestAuthEndpoints:
             "password": "password123"
         }
         
-        # Crear usuario por primera vez
+        # Create user for the first time
         response1 = client.post("/users", json=user_data)
         assert response1.status_code == 200
         
-        # Intentar crear el mismo usuario otra vez
+        # Try to create the same user again
         response2 = client.post("/users", json=user_data)
         assert response2.status_code == 400
-        assert "ya está registrado" in response2.json()["detail"]
+        assert "already registered" in response2.json()["detail"]
     
     def test_login_success(self, test_user):
-        """Test login exitoso"""
+        """Test successful login"""
         login_data = {
             "username": test_user.username,
             "password": "testpassword123"

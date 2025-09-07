@@ -3,12 +3,13 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { FaTrash, FaFilePdf, FaEdit, FaEye, FaTable, FaThLarge, FaEyeSlash } from "react-icons/fa";
 import { Flex, TableContainer, Table, Tr, Td, Thead, Th, Tbody, Card, CardHeader, CardBody, Grid, GridItem, Text, Image as ChakraImage, Modal, ModalOverlay, ModalContent, ModalCloseButton, ModalBody, useDisclosure, Button, useToast, Tabs, TabList, TabPanels, Tab, TabPanel, Accordion, AccordionItem, AccordionButton, AccordionPanel, AccordionIcon, VStack, HStack, Divider, Badge, useColorModeValue, Box, Tooltip, Switch, FormControl, FormLabel } from "@chakra-ui/react";
-import { fetchInformationSystemById, updateThreatsRiskBatch, createThreatForSystem, deleteThreat } from "../services/index";
+import { fetchInformationSystemById, getInformationSystemById, updateThreatsRiskBatch, createThreatForSystem, deleteThreat } from "../services/index";
 import { useLocalization, getOwaspSelectOptions } from '../hooks/useLocalization';
 import OwaspSelector from './OwaspSelector';
 import ReportGenerator from './ReportGenerator';
 import RiskDisplay from './RiskDisplay';
 import ResidualRiskSelector from './ResidualRiskSelector';
+import ControlTagsWithAutocomplete from './ControlTagsWithAutocomplete';
 import { calculateInherentRisk, getRiskColorCSS, getRiskLabel } from '../utils/riskCalculations';
 import { handleTextareaResize, calculateTextareaHeight } from '../utils/textareaHelpers';
 
@@ -55,6 +56,7 @@ const Analysis = () => {
   
   // Hook para el generador de reportes
   const reportGenerator = ReportGenerator();
+  
   
   // Hook for colors based on color mode
   const controlBg = useColorModeValue('gray.50', 'gray.700');
@@ -136,7 +138,15 @@ const Analysis = () => {
       [threatId]: numericValue
     }));
   };
-  
+
+  // Function to handle control tags updates (deferred saving)
+  const handleControlTagsUpdate = (threatId, newTags) => {
+    setPendingControlTags(prev => ({
+      ...prev,
+      [threatId]: newTags
+    }));
+  };
+
   // Helper function to create a remediation switch
   const createRemediationSwitch = (threat, size = "md") => {
     return (
@@ -211,6 +221,7 @@ const Analysis = () => {
 
   // State to track dropdown values
   const [dropdownValues, setDropdownValues] = useState({});
+  const [pendingControlTags, setPendingControlTags] = useState({}); // Estado para tags pendientes
 
   // Initialize dropdown values when threats change
   useEffect(() => {
@@ -359,10 +370,6 @@ const Analysis = () => {
   const fetchData = async () => {
     setIsLoading(true);
     const data = await fetchInformationSystemById(id);
-    console.log('=== FETCHDATA DEBUG ===');
-    console.log('Fetched data:', data);
-    console.log('Data threats:', data?.threats);
-    console.log('Number of threats:', data?.threats?.length || 0);
     
     setServiceData(data);
     setThreats(data?.threats || []);
@@ -372,8 +379,6 @@ const Analysis = () => {
       const initialInherentRisks = {};
       const initialResidualRisks = {};
       data.threats.forEach(threat => {
-        console.log(`Processing threat ${threat.id}, risk.residual_risk:`, threat.risk?.residual_risk);
-        
         const inherentRiskValue = calculateInherentRisk(threat.risk);
         initialInherentRisks[threat.id] = parseFloat(inherentRiskValue.toFixed(1));
         
@@ -398,8 +403,6 @@ const Analysis = () => {
   
   // Function to update inherent risk when OWASP values change
   const updateInherentRisk = (threatId, factorName, newValue) => {
-    console.log(`updateInherentRisk called for threat ${threatId}, factor ${factorName}, new value ${newValue}`);
-    
     // Actualizar el threat en el estado con el nuevo valor
     setThreats(prevThreats => {
       const updatedThreats = prevThreats.map(threat => {
@@ -436,8 +439,6 @@ const Analysis = () => {
           const impact = impactFactors.reduce((acc, val) => acc + val, 0) / impactFactors.length;
           const overallRisk = (likelihood + impact) / 2;
           
-          console.log(`Calculated risk for threat ${threatId}: Likelihood=${likelihood.toFixed(3)}, Impact=${impact.toFixed(3)}, Overall=${overallRisk.toFixed(3)}`);
-          
           // Actualizar el riesgo inherente inmediatamente
           setInherentRisks(prev => ({
             ...prev,
@@ -452,15 +453,12 @@ const Analysis = () => {
         return threat;
       });
       
-      console.log(`Updated threats state for threat ${threatId}`);
       return updatedThreats;
     });
   };
   
   // Function to update remediation status
   const updateRemediationStatus = (threatId, status) => {
-    console.log(`Actualizando remediación para threat ${threatId}: ${status ? 'aplicada' : 'removida'}`);
-    
     // Actualizar el estado local de threats
     setThreats(prevThreats => 
       prevThreats.map(threat => 
@@ -488,10 +486,8 @@ const Analysis = () => {
     
     // El riesgo residual ahora se maneja completamente de forma manual
     // Does not update automatically when remediation status changes
-    console.log(`Remediación ${status ? 'aplicada' : 'removida'} para threat ${threatId}. Riesgo residual se mantiene manual.`);
     
     // Force re-render by updating state (this should trigger getCurrentRiskValue)
-    console.log('Estados actualizados, debería re-renderizar getCurrentRiskValue');
   };
   
   // Function to generate PDF report (using ReportGenerator component)
@@ -581,8 +577,8 @@ const Analysis = () => {
         </CardBody>
       </Card>
       
-      <Text fontSize="xl" fontWeight="bold" color="blue.600" mb={4}>
-        {t?.ui?.threats || 'Threats'}:
+      <Text fontSize="xl" fontWeight="bold" color="blue.600" mb={4} mt={6}>
+        {t?.ui?.threats || 'Threats'}: {threats.length}
       </Text>
       
       {/* Controles de vista */}
@@ -650,7 +646,7 @@ const Analysis = () => {
         <Card mb={4}>
           <CardBody>
             <VStack spacing={4}>
-              {threats.map((threat, index) => (
+              {threats && Array.isArray(threats) && threats.map((threat, index) => (
                 <Card key={threat.id} w="100%" variant="outline">
                   <CardBody>
                     <HStack justify="space-between" align="start">
@@ -764,7 +760,7 @@ const Analysis = () => {
       {viewMode === 'tabs' && (
         <Tabs variant="enclosed" colorScheme="blue">
           <TabList>
-            {threats.map((threat, index) => (
+            {threats && Array.isArray(threats) && threats.map((threat, index) => (
               <Tab key={threat.id} maxWidth="200px" overflow="hidden" textOverflow="ellipsis">
                 <VStack spacing={1}>
                   <Text fontSize="sm" fontWeight="bold" noOfLines={1}>
@@ -798,7 +794,7 @@ const Analysis = () => {
             ))}
           </TabList>
           <TabPanels>
-            {threats.map((threat) => (
+            {threats && Array.isArray(threats) && threats.map((threat) => (
               <TabPanel key={threat.id}>
                 <Card>
                   <CardBody>
@@ -1010,7 +1006,7 @@ const Analysis = () => {
             </Tr>
           </Thead>
           <Tbody>
-            {threats.map((threat) => (
+            {threats && Array.isArray(threats) && threats.map((threat) => (
               <Tr key={threat.id}>
                 
                 <Td p="4" shadow="md" maxWidth="200px">
@@ -1060,6 +1056,21 @@ const Analysis = () => {
                     id={`remediation-${threat.id}`}
                     onInput={handleTextareaResize}
                   />
+                  
+                  {/* Tags */}
+                  <Box pt={2} borderTop="1px solid" borderColor="gray.200">
+                    <ControlTagsWithAutocomplete
+                      threatId={threat.id}
+                      strideCategory={threat.type}
+                      initialTags={
+                        // Si hay tags pendientes para este threat, usarlos; sino usar los del backend
+                        pendingControlTags[threat.id] !== undefined 
+                          ? pendingControlTags[threat.id] 
+                          : (threat.remediation?.control_tags || [])
+                      }
+                      onTagsChange={handleControlTagsUpdate}
+                    />
+                  </Box>
                 </Td>
                 {/* Columnas OWASP - Solo se muestran si showRiskAssessment es true */}
                 {showRiskAssessment && (
@@ -1419,6 +1430,10 @@ const Analysis = () => {
               return;
             }
             try {
+              if (!threats || !Array.isArray(threats)) {
+                throw new Error("No hay amenazas válidas para actualizar");
+              }
+              
               const updates = threats.map(threat => {
                 // Usar el estado actual de React en lugar de leer del DOM
                 const residualRiskValue = getResidualRiskValue(threat.id);
@@ -1430,7 +1445,10 @@ const Analysis = () => {
                   description: document.getElementById(`description-${threat.id}`)?.value ?? threat.description,
                   remediation: { 
                     description: document.getElementById(`remediation-${threat.id}`)?.value ?? threat.remediation?.description ?? "",
-                    status: threat.remediation?.status ?? false // Usar el estado de React directamente
+                    status: threat.remediation?.status ?? false, // Usar el estado de React directamente
+                    control_tags: pendingControlTags[threat.id] !== undefined 
+                      ? pendingControlTags[threat.id] 
+                      : (threat.remediation?.control_tags || [])
                   },
                   // Incluir el riesgo residual en el payload principal
                   residual_risk: residualRiskValue,
@@ -1453,7 +1471,7 @@ const Analysis = () => {
                   privacy_violation: threat.risk?.privacy_violation ?? 0,
                 };
               });
-              console.log("Updates payload:", updates);
+              
               // Actualizar todos los datos incluyendo riesgo residual en una sola llamada
               await updateThreatsRiskBatch(id, updates);
               
@@ -1461,9 +1479,7 @@ const Analysis = () => {
               let deletionErrors = [];
               for (const threatId of deletedThreats) {
                 try {
-                  console.log(`Intentando borrar threat con ID: ${threatId}`);
                   await deleteThreat(threatId);
-                  console.log(`Threat ${threatId} borrado exitosamente`);
                 } catch (error) {
                   console.error(`Error borrando threat ${threatId}:`, error);
                   deletionErrors.push(`${threatId}: ${error.message || 'Error desconocido'}`);
@@ -1483,7 +1499,26 @@ const Analysis = () => {
                   'success'
                 );
               }
+              
+              // ✅ LIMPIEZA DESPUÉS DEL GUARDADO EXITOSO
               setDeletedThreats([]);
+              
+              // ✅ LIMPIAR TAGS PENDIENTES (ya se guardaron)
+              setPendingControlTags({});
+              
+              // ✅ RECARGAR DATOS DEL BACKEND PARA SINCRONIZAR
+              try {
+                const reloadedData = await getInformationSystemById(id);
+                
+                if (reloadedData && reloadedData.threats && Array.isArray(reloadedData.threats)) {
+                  setServiceData(reloadedData);
+                  setThreats(reloadedData.threats);
+                } else {
+                  console.warn("⚠️ Los datos recargados no tienen threats válidos:", reloadedData);
+                }
+              } catch (reloadError) {
+                console.warn("⚠️ Error recargando datos después de guardar:", reloadError);
+              }
               
             } catch (error) {
               showNotification(

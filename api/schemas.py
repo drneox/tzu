@@ -1,8 +1,9 @@
 from typing import Optional
 from typing import List, Optional
 from uuid import UUID
-from pydantic import BaseModel, FilePath
+from pydantic import BaseModel, FilePath, field_validator, Field
 from datetime import datetime
+import json
 
 class InformationSystemBase(BaseModel):
     title: str
@@ -21,11 +22,41 @@ class UseCase(BaseModel):
     description:str
     information_system_id: str
 
-class Remediation(BaseModel):
-    model_config = {"from_attributes": True}
-    
+class RemediationBase(BaseModel):
     description: str
     status: bool = False
+    control_tags: Optional[List[str]] = []  # Lista de tags de controles
+
+class RemediationCreate(RemediationBase):
+    pass
+
+class RemediationUpdate(BaseModel):
+    description: Optional[str] = None
+    status: Optional[bool] = None
+    control_tags: Optional[List[str]] = None
+
+class Remediation(RemediationBase):
+    model_config = {"from_attributes": True}
+    
+    id: UUID
+    
+    @field_validator('control_tags', mode='before')
+    @classmethod
+    def parse_control_tags(cls, v):
+        """Parse control_tags from JSON string or return as-is if already a list"""
+        if v is None:
+            return []
+        elif isinstance(v, str):
+            if v == "" or v == "[]":
+                return []
+            try:
+                return json.loads(v)
+            except (json.JSONDecodeError, TypeError):
+                return []
+        elif isinstance(v, list):
+            return v
+        else:
+            return []
 
 
 class Risk(BaseModel):
@@ -70,6 +101,17 @@ class Threat(BaseModel):
     description:str
     remediation: Remediation
     risk: Risk
+
+class ThreatWithSystem(BaseModel):
+    model_config = {"from_attributes": True}
+    
+    id: UUID
+    type: str
+    title: str
+    description: str
+    remediation: Remediation
+    risk: Risk
+    information_system: InformationSystemBase
   
 class InformationSystem(InformationSystemBase):
     model_config = {"from_attributes": True}
@@ -90,7 +132,7 @@ class UserCreate(UserBase):
     password: str
 
 
-# Para actualización parcial de usuario (por ejemplo, solo password)
+# For partial user update (for example, password only)
 class UserUpdate(BaseModel):
     username: Optional[str] = None
     email: Optional[str] = None
