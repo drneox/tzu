@@ -52,7 +52,7 @@ export const logoutMenuItemStyle = {
 
 // Estilo para la barra de navegación inferior
 export const navBarStyle = {
-  width: "200px",
+  width: "300px",
   justifyContent: "space-between",
   mt: 4
 };

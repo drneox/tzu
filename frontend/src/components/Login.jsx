@@ -150,7 +150,7 @@ const Login = ({ onLogin }) => {
                   fontWeight="bold"
                   letterSpacing="tight"
                 >
-                  TZU Security
+                  TZU Login
                 </Heading>
                 <Text
                   fontSize="sm"

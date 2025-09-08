@@ -156,7 +156,8 @@
     },
     "menu": {
       "new_analysis": "New Analysis",
-      "archive": "Archive"
+      "archive": "Archive",
+      "reports": "Reports"
     },
     "loading": "Loading...",
     "system_information": "System Information",
@@ -275,6 +276,43 @@
     "click_to_mark_not_applied": "Click to mark as not remediated",
     "residual_risk_recalculated_title": "Recalculated",
     "residual_risk_recalculated": "Residual risk has been automatically recalculated",
-    "recalculate_residual": "Recalculate Residual Risk"
+    "recalculate_residual": "Recalculate Residual Risk",
+    "reports": {
+      "title": "Reports - All Threats",
+      "threat_modelling": "Threat Modelling",
+      "showing_page": "Showing page",
+      "threats": "threats",
+      "filtered_by": "Filtered by",
+      "standards": "Standards",
+      "inherent_risk": "Inherent Risk",
+      "current_risk": "Current Risk", 
+      "active_filters_hidden": "Active filters hidden",
+      "hide_filters": "Hide Filters",
+      "show_filters": "Show Filters",
+      "residual_risk": "Residual Risk",
+      "tags": "Tags",
+      "no_tags": "No tags",
+      "no_threats": "No threats match the filters",
+      "previous_page": "Previous page",
+      "next_page": "Next page",
+      "page": "Page",
+      "loading_threats": "Loading threats...",
+      "error_loading": "Error loading threats",
+      "filters": {
+        "filters_by_standard": "Filters by Standard",
+        "security_standards": "Security Standards",
+        "active_filters": "Active filters",
+        "filters_by_risk": "Filters by Risk",
+        "clear_all_filters": "Clear all filters",
+        "inherent": "Inherent",
+        "current": "Current",
+        "risk_levels": {
+          "low": "Low",
+          "medium": "Medium",
+          "high": "High",
+          "critical": "Critical"
+        }
+      }
+    }
   }
 }

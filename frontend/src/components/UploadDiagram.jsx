@@ -12,10 +12,10 @@ import {
   VStack,
   Icon,
   useColorModeValue,
-  keyframes
 } from "@chakra-ui/react";
 import { FiUpload, FiCheck, FiAlertCircle } from "react-icons/fi";
 import { uploadDiagram } from "../services";
+import { keyframes } from "@emotion/react"; // 👈 keyframes viene de Emotion
 
 // Animaciones personalizadas
 const bounce = keyframes`

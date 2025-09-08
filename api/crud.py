@@ -1,12 +1,88 @@
 from uuid import UUID
+import json
 import models
 from sqlalchemy.orm import Session, joinedload
+from sqlalchemy import or_, text
 from passlib.context import CryptContext
 from datetime import datetime, timedelta
 from jose import JWTError, jwt
-from typing import Optional, Dict, Union
+from typing import Optional, Dict, Union, List
 
 import schemas
+
+# Import STRIDE normalization function
+from stride_validator import normalize_stride_category
+
+def get_all_threats(db: Session, skip: int = 0, limit: int = 100, system_id: Optional[str] = None, standards: Optional[list] = None, inherit_risk: Optional[str] = None, current_risk: Optional[str] = None):
+    """Gets all threats with optional filters"""
+    
+    query = db.query(models.Threat).options(
+        joinedload(models.Threat.risk),
+        joinedload(models.Threat.remediation),
+        joinedload(models.Threat.information_system)
+    )
+    
+    # Filter by information system
+    if system_id:
+        try:
+            query = query.filter(models.Threat.information_system_id == UUID(system_id))
+        except ValueError:
+            return []
+    
+        # Filtro por riesgo inherente
+    if inherit_risk:
+        query = query.join(models.Risk).filter(models.Risk.inherit_risk == inherit_risk)
+    
+    # Filtro por riesgo actual (considerando estado de remediación)
+    if current_risk:
+        from sqlalchemy import case, and_
+        
+        # Unir con Risk y Remediation si no se han unido ya
+        if not inherit_risk:
+            query = query.join(models.Risk)
+        query = query.join(models.Remediation)
+        
+        # Crear lógica condicional para riesgo actual:
+        # Si remediation.status = True Y residual_risk no es NULL, usar residual_risk
+        # Sino, usar inherit_risk
+        current_risk_expression = case(
+            (
+                and_(
+                    models.Remediation.status == True,
+                    models.Risk.residual_risk.isnot(None)
+                ),
+                case(
+                    (models.Risk.residual_risk < 3, "LOW"),
+                    (models.Risk.residual_risk < 6, "MEDIUM"),
+                    (models.Risk.residual_risk < 9, "HIGH"),
+                    else_="CRITICAL"
+                )
+            ),
+            else_=models.Risk.inherit_risk
+        )
+        
+        query = query.filter(current_risk_expression == current_risk)
+    
+    # Filtro por estándares - usando SQL directo para JSON
+    if standards and len(standards) > 0:
+        # Usar la lógica SQL que funciona correctamente
+        for standard in standards:
+            condition = text("""
+                EXISTS (
+                    SELECT 1 FROM remediations r 
+                    CROSS JOIN LATERAL json_array_elements_text(r.control_tags::json) AS tag
+                    WHERE r.id = threats.remediation_id 
+                    AND tag LIKE :pattern
+                )
+            """).params(pattern=f'%({standard})')
+            
+            query = query.filter(condition)
+    
+    # Get threats ordered by ID (newest first, assuming UUIDs are generated chronologically)
+    threats = query.order_by(models.Threat.id.desc()).offset(skip).limit(limit).all()
+    
+    return threats
+
 
 # Security configuration for passwords and JWT
 import os
@@ -45,9 +121,9 @@ def create_user(db: Session, user: schemas.UserCreate, is_admin: bool = False):
 
 def authenticate_user(db: Session, username: str, password: str):
     user = get_user_by_username(db, username)
-    print(f"[DEBUG] Buscando usuario: {repr(username)} -> Encontrado: {user is not None}")
+    print(f"[DEBUG] Searching user: {repr(username)} -> Found: {user is not None}")
     if user:
-        print(f"[DEBUG] Hash en BD: {repr(user.password_hash)}")
+        print(f"[DEBUG] Hash in DB: {repr(user.password_hash)}")
     if not user:
         return False
     try:
@@ -95,17 +171,26 @@ def update_threat_risk(db: Session, threat_id: str, data: dict):
     # Update Threat fields
     for key in ['title', 'type', 'description']:
         if key in data:
-            print(f"Actualizando Threat {key}: {getattr(threat, key)} -> {data[key]}")
-            setattr(threat, key, data[key])
+            value = data[key]
+            # Normalizar categoría STRIDE si es el campo 'type'
+            if key == 'type':
+                normalized_value = normalize_stride_category(value)
+                if not normalized_value:
+                    print(f"⚠️ Warning: Invalid STRIDE category '{value}' in update, using 'Spoofing'")
+                    value = 'Spoofing'
+                else:
+                    value = normalized_value
+            print(f"Actualizando Threat {key}: {getattr(threat, key)} -> {value}")
+            setattr(threat, key, value)
     # Update Remediation field
     if remediation and 'remediation' in data and isinstance(data['remediation'], dict):
         remediation_data = data['remediation']
-        print(f"Datos de remediación recibidos: {remediation_data}")
+        print(f"Remediation data received: {remediation_data}")
         if 'description' in remediation_data:
-            print(f"Actualizando Remediation description: {remediation.description} -> {remediation_data['description']}")
+            print(f"Updating Remediation description: {remediation.description} -> {remediation_data['description']}")
             remediation.description = remediation_data['description']
         if 'status' in remediation_data:
-            print(f"Actualizando Remediation status: {remediation.status} -> {remediation_data['status']}")
+            print(f"Updating Remediation status: {remediation.status} -> {remediation_data['status']}")
             remediation.status = remediation_data['status']
         db.add(remediation)
         db.commit()
@@ -156,7 +241,7 @@ def get_threats_by_information_system(db: Session, information_system_id: str):
     return db.query(models.Threat).options(
         joinedload(models.Threat.risk),
         joinedload(models.Threat.remediation)
-    ).filter(models.Threat.information_system_id == UUID(information_system_id)).all()
+    ).filter(models.Threat.information_system_id == UUID(information_system_id)).order_by(models.Threat.created_at.desc()).all()
  
 def create_information_system(db: Session, information_system: schemas.InformationSystem):
     db_information_system = models.InformationSystem(title=information_system.title,
@@ -231,15 +316,51 @@ def create_risk(db: Session, risk: schemas.Risk):
     return risk_model
 
 
-def create_remediation(db: Session, description:str):
+def create_remediation(db: Session, description: str, control_tags: list = None):
+    # Convertir lista de control_tags a JSON string
+    control_tags_json = json.dumps(control_tags) if control_tags else "[]"
+    
     remediation = models.Remediation(
-        description = description,
-        status = False
-        )
+        description=description,
+        status=False,
+        control_tags=control_tags_json
+    )
     db.add(remediation)
     db.commit()
     db.refresh(remediation)
     return remediation
+
+
+def update_remediation(db: Session, remediation_id: str, description: str = None, status: bool = None, control_tags: list = None):
+    """
+    Update an existing remediation
+    """
+    try:
+        # Search for remediation by ID
+        remediation = db.query(models.Remediation).filter(models.Remediation.id == remediation_id).first()
+        
+        if not remediation:
+            return None
+        
+        # Update fields if provided
+        if description is not None:
+            remediation.description = description
+        
+        if status is not None:
+            remediation.status = status
+        
+        if control_tags is not None:
+            # Convert control_tags list to JSON string
+            control_tags_json = json.dumps(control_tags) if control_tags else "[]"
+            remediation.control_tags = control_tags_json
+        
+        db.commit()
+        db.refresh(remediation)
+        return remediation
+        
+    except Exception as e:
+        db.rollback()
+        raise e
 
 
 # Authentication utility functions
@@ -318,4 +439,52 @@ def delete_user(db: Session, user_id: UUID):
     db.delete(db_user)
     db.commit()
     return db_user
+
+
+def delete_threat(db: Session, threat_id: str):
+    """
+    Delete a threat and its associated risk and remediation.
+    
+    Args:
+        db: Database session
+        threat_id: UUID string of the threat to delete
+        
+    Returns:
+        bool: True if threat was deleted, False if not found
+    """
+    from uuid import UUID
+    
+    # Convert string UUID to UUID object
+    try:
+        uuid_obj = UUID(threat_id)
+    except ValueError:
+        return False
+    
+    # Get the threat with relationships
+    threat = db.query(models.Threat).filter(models.Threat.id == uuid_obj).first()
+    if not threat:
+        return False
+    
+    # Store IDs for cleanup
+    risk_id = threat.risk_id
+    remediation_id = threat.remediation_id
+    
+    # Delete the threat first
+    db.delete(threat)
+    
+    # Delete associated risk
+    if risk_id:
+        risk = db.query(models.Risk).filter(models.Risk.id == risk_id).first()
+        if risk:
+            db.delete(risk)
+    
+    # Delete associated remediation
+    if remediation_id:
+        remediation = db.query(models.Remediation).filter(models.Remediation.id == remediation_id).first()
+        if remediation:
+            db.delete(remediation)
+    
+    # Commit all changes
+    db.commit()
+    return True
 

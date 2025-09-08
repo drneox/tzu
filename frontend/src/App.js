@@ -29,6 +29,7 @@ import Footer from './components/Footer';
 import Index from './components/Index';
 import List from './components/List';
 import Analysis from './components/Analysis';
+import Reports from './components/Reports';
 import CreateInformationSystem from './components/CreateInformationSystem';
 import UploadDiagram from './components/UploadDiagram';
 
@@ -97,6 +98,15 @@ function AppContent() {
             element={
               <ProtectedRoute>
                 <Analysis />
+              </ProtectedRoute>
+            } 
+          />
+          
+          <Route 
+            path="/reports" 
+            element={
+              <ProtectedRoute>
+                <Reports />
               </ProtectedRoute>
             } 
           />

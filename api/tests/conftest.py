@@ -1,5 +1,5 @@
 """
-Configuración base para los tests de la API TZU
+Base configuration for TZU API tests
 """
 import pytest
 import os
@@ -10,26 +10,28 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 from unittest.mock import MagicMock
 
-# CONFIGURACIÓN DE TEST: Set up test environment variables ANTES de importar módulos
-# Esto asegura que los módulos se carguen con la configuración correcta
-os.environ["DATABASE_URL"] = "sqlite:///./test.db"  # Base de datos de test
-os.environ["OPENAI_API_KEY"] = "test-key"           # API key mock para test
-os.environ["ENVIRONMENT"] = "test"                  # Marcar entorno de test
-os.environ["SECRET_KEY"] = "test-secret-key-for-jwt-at-least-32-characters-long"  # JWT secret para tests
+# TEST ENVIRONMENT CONFIGURATION: Set up test environment variables BEFORE importing modules
+# This ensures modules load with the correct configuration
+TEST_DATABASE_URL = "sqlite:///./test.db"
+os.environ["DATABASE_URL"] = TEST_DATABASE_URL       # Test database
+os.environ["OPENAI_API_KEY"] = "test-key"           # Mock API key for tests
+os.environ["ENVIRONMENT"] = "test"                  # Mark test environment
+os.environ["SECRET_KEY"] = "test-secret-key-for-jwt-at-least-32-characters-long"  # JWT secret for tests
 
 # Mock external modules before importing
 sys.modules['any_llm'] = MagicMock()
 
-# Import our modules DESPUÉS de configurar el entorno
+# Add api directory to path for relative imports
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+
+# Import our modules AFTER setting up environment
 import models
 import database
 from api import app
 from database import get_db
 
-# CONFIGURACIÓN DE BASE DE DATOS DE TEST
-# Crear motor de base de datos específico para tests con SQLite en memoria
-TEST_DATABASE_URL = "sqlite:///./test.db"
-
+# TEST DATABASE CONFIGURATION
+# Create specific database engine for tests with in-memory SQLite
 test_engine = create_engine(
     TEST_DATABASE_URL,
     connect_args={"check_same_thread": False},

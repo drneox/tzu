@@ -1,15 +1,21 @@
 from typing import Optional
 from typing import List, Optional
 from uuid import UUID
-from pydantic import BaseModel, FilePath
+from pydantic import BaseModel, FilePath, field_validator, Field
 from datetime import datetime
+import json
+
+class InformationSystemCreate(BaseModel):
+    title: str
+    description: str | None = None
 
 class InformationSystemBase(BaseModel):
+    id: UUID
     title: str
     description: str | None = None
   
 
-class InformationSystemBaseCreate(InformationSystemBase):
+class InformationSystemBaseCreate(InformationSystemCreate):
     pass
 
 
@@ -21,11 +27,41 @@ class UseCase(BaseModel):
     description:str
     information_system_id: str
 
-class Remediation(BaseModel):
-    model_config = {"from_attributes": True}
-    
+class RemediationBase(BaseModel):
     description: str
     status: bool = False
+    control_tags: Optional[List[str]] = []  # Lista de tags de controles
+
+class RemediationCreate(RemediationBase):
+    pass
+
+class RemediationUpdate(BaseModel):
+    description: Optional[str] = None
+    status: Optional[bool] = None
+    control_tags: Optional[List[str]] = None
+
+class Remediation(RemediationBase):
+    model_config = {"from_attributes": True}
+    
+    id: UUID
+    
+    @field_validator('control_tags', mode='before')
+    @classmethod
+    def parse_control_tags(cls, v):
+        """Parse control_tags from JSON string or return as-is if already a list"""
+        if v is None:
+            return []
+        elif isinstance(v, str):
+            if v == "" or v == "[]":
+                return []
+            try:
+                return json.loads(v)
+            except (json.JSONDecodeError, TypeError):
+                return []
+        elif isinstance(v, list):
+            return v
+        else:
+            return []
 
 
 class Risk(BaseModel):
@@ -59,6 +95,12 @@ class Risk(BaseModel):
     
     # Residual Risk (calculated or manually set)
     residual_risk: Optional[float] = None  # 1-9 scale (allows decimal values)
+    
+    # Calculated properties (read-only)
+    likelihood_score: Optional[float] = None
+    impact_score: Optional[float] = None
+    overall_risk_score: Optional[float] = None
+    inherit_risk: Optional[str] = None
 
 
 class Threat(BaseModel):
@@ -70,7 +112,8 @@ class Threat(BaseModel):
     description:str
     remediation: Remediation
     risk: Risk
-  
+    current_risk_level: Optional[str] = None
+
 class InformationSystem(InformationSystemBase):
     model_config = {"from_attributes": True}
     
@@ -78,6 +121,18 @@ class InformationSystem(InformationSystemBase):
     datetime: datetime
     diagram: str | None = None
     threats: List[Threat] = []
+
+class ThreatWithSystem(BaseModel):
+    model_config = {"from_attributes": True}
+    
+    id: UUID
+    type: str
+    title: str
+    description: str
+    remediation: Remediation
+    risk: Risk
+    information_system: InformationSystem  # Usar la clase ya definida arriba
+    current_risk_level: Optional[str] = None
 
 
 class UserBase(BaseModel):
@@ -90,7 +145,7 @@ class UserCreate(UserBase):
     password: str
 
 
-# Para actualización parcial de usuario (por ejemplo, solo password)
+# For partial user update (for example, password only)
 class UserUpdate(BaseModel):
     username: Optional[str] = None
     email: Optional[str] = None
