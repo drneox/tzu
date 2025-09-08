@@ -115,45 +115,6 @@ export const fetchAvailableStandards = async () => {
 };
 
 /**
- * Obtiene la jerarquía completa de control tags
- */
-export const fetchControlTagsHierarchy = async () => {
-  try {
-    const response = await apiClient.get('/control-tags/hierarchy');
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching control tags hierarchy:', error);
-    throw new Error(error.response?.data?.detail || 'Error al obtener jerarquía de control tags');
-  }
-};
-
-/**
- * Obtiene control tags por estándar específico
- */
-export const fetchControlTagsByStandard = async (standard) => {
-  try {
-    const response = await apiClient.get(`/control-tags/by-standard/${standard}`);
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching control tags by standard:', error);
-    throw new Error(error.response?.data?.detail || 'Error al obtener control tags por estándar');
-  }
-};
-
-/**
- * Obtiene control tags por estándar y categoría STRIDE
- */
-export const fetchControlTagsByStandardAndCategory = async (standard, strideCategory) => {
-  try {
-    const response = await apiClient.get(`/control-tags/by-standard/${standard}/category/${encodeURIComponent(strideCategory)}`);
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching control tags by standard and category:', error);
-    throw new Error(error.response?.data?.detail || 'Error al obtener control tags por estándar y categoría');
-  }
-};
-
-/**
  * Categoriza una lista de tags por estándar
  */
 export const categorizeControlTags = async (tags) => {

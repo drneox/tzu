@@ -276,6 +276,43 @@
     "click_to_mark_not_applied": "Haz clic para marcar como no remediada",
     "residual_risk_recalculated_title": "Recalculado",
     "residual_risk_recalculated": "El riesgo residual ha sido recalculado automáticamente",
-    "recalculate_residual": "Recalcular Riesgo Residual"
+    "recalculate_residual": "Recalcular Riesgo Residual",
+    "reports": {
+      "title": "Reportes - Todas las Amenazas",
+      "threat_modelling": "Threat Modelling",
+      "showing_page": "Mostrando página",
+      "threats": "amenazas",
+      "filtered_by": "Filtrados por",
+      "standards": "Estándares",
+      "inherent_risk": "Riesgo Inherente",
+      "current_risk": "Riesgo Actual",
+      "active_filters_hidden": "Filtros activos ocultos",
+      "hide_filters": "Ocultar Filtros",
+      "show_filters": "Mostrar Filtros",
+      "residual_risk": "Riesgo Residual",
+      "tags": "Tags",
+      "no_tags": "Sin tags",
+      "no_threats": "No hay amenazas que coincidan con los filtros",
+      "previous_page": "Página anterior",
+      "next_page": "Página siguiente",
+      "page": "Página",
+      "loading_threats": "Cargando amenazas...",
+      "error_loading": "Error al cargar las amenazas",
+      "filters": {
+        "filters_by_standard": "Filtros por Estándar",
+        "security_standards": "Estándares de Seguridad",
+        "active_filters": "Filtros activos",
+        "filters_by_risk": "Filtros por Riesgo",
+        "clear_all_filters": "Limpiar todos los filtros",
+        "inherent": "Inherente",
+        "current": "Actual",
+        "risk_levels": {
+          "low": "Bajo",
+          "medium": "Medio",
+          "high": "Alto",
+          "critical": "Crítico"
+        }
+      }
+    }
   }
 }

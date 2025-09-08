@@ -1,13 +1,13 @@
 """
-Standards module - Módulo de estándares de seguridad automático
-================================================================
-Este módulo carga dinámicamente todos los estándares de seguridad desde archivos individuales.
-Para agregar un nuevo estándar, simplemente crea un archivo .py con la variable {NOMBRE}_CONTROLS.
+Standards module - Automatic security standards module
+======================================================
+This module dynamically loads all security standards from individual files.
+To add a new standard, simply create a .py file with the {NAME}_CONTROLS variable.
 
-Convención:
-- Archivo: nombre_estandar.py  
-- Variable: NOMBRE_ESTANDAR_CONTROLS (en mayúsculas)
-- Ejemplo: asvs.py -> ASVS_CONTROLS, iso27001.py -> ISO27001_CONTROLS
+Convention:
+- File: standard_name.py  
+- Variable: STANDARD_NAME_CONTROLS (uppercase)
+- Example: asvs.py -> ASVS_CONTROLS, iso27001.py -> ISO27001_CONTROLS
 """
 
 import os
@@ -15,21 +15,21 @@ import re
 import importlib
 from pathlib import Path
 
-# Obtener la ruta del directorio actual
+# Get current directory path
 current_dir = Path(__file__).parent
 
-# Diccionarios que se llenarán automáticamente
+# Dictionaries that will be filled automatically
 ALL_CONTROLS = {}
 STANDARDS_MAP = {}
 TAGS_MAP = {}
 
 def _load_standards_automatically():
     """
-    Carga automáticamente todos los estándares desde archivos .py en la carpeta standards/
+    Automatically loads all standards from .py files in the standards/ folder
     """
     global ALL_CONTROLS, STANDARDS_MAP, TAGS_MAP
     
-    # Buscar todos los archivos .py excepto __init__.py
+    # Find all .py files except __init__.py
     standard_files = [f for f in os.listdir(current_dir) 
                      if f.endswith('.py') and not f.startswith('__')]
     
@@ -37,58 +37,58 @@ def _load_standards_automatically():
     
     for file_name in standard_files:
         try:
-            # Extraer el nombre del módulo (sin .py)
+            # Extract module name (without .py)
             module_name = file_name[:-3]
             
-            # Convertir nombre de archivo a nombre de variable
-            # ej: iso27001.py -> ISO27001, asvs.py -> ASVS
+            # Convert file name to variable name
+            # e.g.: iso27001.py -> ISO27001, asvs.py -> ASVS
             standard_name = module_name.upper()
             controls_var_name = f"{standard_name}_CONTROLS"
             
-            # Importar el módulo dinámicamente
+            # Import module dynamically
             module = importlib.import_module(f'.{module_name}', package=__name__)
             
-            # Verificar si existe la variable {NOMBRE}_CONTROLS
+            # Check if the {NAME}_CONTROLS variable exists
             if hasattr(module, controls_var_name):
                 controls = getattr(module, controls_var_name)
                 
-                # Agregar al mapeo de estándares
+                # Add to standards mapping
                 STANDARDS_MAP[standard_name] = controls
                 
-                # Crear lista de tags
+                # Create tags list
                 TAGS_MAP[f"{standard_name}_TAGS"] = list(controls.keys())
                 
-                # Agregar a ALL_CONTROLS
+                # Add to ALL_CONTROLS
                 ALL_CONTROLS.update(controls)
                 
-                loaded_standards.append(f"{standard_name} ({len(controls)} controles)")
+                loaded_standards.append(f"{standard_name} ({len(controls)} controls)")
                 
-                print(f"✅ Cargado: {standard_name} con {len(controls)} controles")
+                print(f"✅ Loaded: {standard_name} with {len(controls)} controls")
             else:
-                print(f"⚠️  Advertencia: {file_name} no tiene variable {controls_var_name}")
+                print(f"⚠️  Warning: {file_name} doesn't have {controls_var_name} variable")
                 
         except Exception as e:
-            print(f"❌ Error cargando {file_name}: {e}")
+            print(f"❌ Error loading {file_name}: {e}")
     
-    print(f"\n🎯 Sistema automático cargado: {len(ALL_CONTROLS)} controles de {len(loaded_standards)} estándares")
+    print(f"\n🎯 Automatic system loaded: {len(ALL_CONTROLS)} controls from {len(loaded_standards)} standards")
     return loaded_standards
 
-# Cargar todos los estándares automáticamente
+# Load all standards automatically
 _loaded_standards = _load_standards_automatically()
 
-# Crear variables dinámicas para compatibilidad hacia atrás
+# Create dynamic variables for backward compatibility
 for standard_name in STANDARDS_MAP.keys():
-    # Crear variables como ASVS_CONTROLS, MASVS_CONTROLS, etc.
+    # Create variables like ASVS_CONTROLS, MASVS_CONTROLS, etc.
     globals()[f"{standard_name}_CONTROLS"] = STANDARDS_MAP[standard_name]
     globals()[f"{standard_name}_TAGS"] = list(STANDARDS_MAP[standard_name].keys())
 
-# STRIDE Control Examples (se mantiene estático por ahora)
+# STRIDE Control Examples (kept static for now)
 STRIDE_CONTROL_EXAMPLES = {
     "SPOOFING": ["V2.1.1", "V2.2.1", "AUTH-1", "A.9.1.1", "PR.AC-1"],
-    "TAMPERING": ["V5.1.1", "V6.2.1", "CODE-1", "A.8.2.1", "PR.DS-6"],
-    "REPUDIATION": ["V7.1.1", "V7.2.1", "A.9.4.2", "PR.PT-1"],
-    "INFORMATION_DISCLOSURE": ["V8.1.1", "V9.1.1", "STORAGE-1", "A.9.4.1", "PR.DS-1"],
-    "DENIAL_OF_SERVICE": ["V11.1.4", "V12.1.1", "A.11.2.4", "PR.DS-4"],
+    "TAMPERING": ["V4.1.1", "V4.2.1", "CODE-1", "A.8.2.1", "PR.DS-6"],
+    "REPUDIATION": ["V3.1.1", "V3.2.1", "A.9.4.2", "PR.PT-1"],
+    "INFORMATION_DISCLOSURE": ["V2.1.2", "V2.1.3", "STORAGE-1", "A.9.4.1", "PR.DS-1"],
+    "DENIAL_OF_SERVICE": ["V1.1.1", "V1.2.1", "A.11.2.4", "PR.DS-4"],
     "ELEVATION_OF_PRIVILEGE": ["V4.1.1", "V4.2.1", "A.9.2.3", "PR.AC-4"]
 }
 
@@ -96,32 +96,47 @@ STRIDE_CONTROL_EXAMPLES = {
 # UTILITY FUNCTIONS FOR TAG PROCESSING
 # =====================================================
 
-def normalize_tag_for_lookup(tag: str) -> str:
+def get_standard_from_tag_id(tag_id: str) -> str:
     """
-    Función simplificada para normalización de tags.
-    Los archivos de estándares ya tienen los IDs exactos como llaves.
+    Automatically extracts the standard from a tag_id using STANDARDS_MAP.
     
     Args:
-        tag: Tag a normalizar
+        tag_id: Tag ID (e.g.: 'V2.1.1', 'AUTH-1')
     
     Returns:
-        str: Tag limpio (solo trim y uppercase)
+        str: Standard name (e.g.: 'ASVS', 'MASVS')
+    """
+    for standard_name, controls in STANDARDS_MAP.items():
+        if tag_id in controls:
+            return standard_name
+    return ""  # If not found
+
+def normalize_tag_for_lookup(tag: str) -> str:
+    """
+    Simplified function for tag normalization.
+    Standard files already have exact IDs as keys.
+    
+    Args:
+        tag: Tag to normalize
+    
+    Returns:
+        str: Clean tag (only trim and uppercase)
     """
     if not tag or tag is None:
         return ""
     
-    # Solo limpieza básica - los archivos ya tienen los IDs exactos
+    # Only basic cleanup - files already have exact IDs
     return tag.strip().upper()
 
 def get_tag_details(tag: str) -> dict:
     """
-    Obtiene los detalles de un tag específico.
+    Gets details for a specific tag.
     
     Args:
-        tag: El identificador del tag
+        tag: The tag identifier
     
     Returns:
-        dict: Diccionario con title, description, category y standard, o None si no se encuentra
+        dict: Dictionary with title, description, category and standard, or None if not found
     """
     normalized_tag = normalize_tag_for_lookup(tag)
     control_details = ALL_CONTROLS.get(normalized_tag)
@@ -129,14 +144,14 @@ def get_tag_details(tag: str) -> dict:
     if control_details is None:
         return None
     
-    # Buscar en qué estándar está este tag
+    # Find which standard this tag belongs to
     standard = None
     for standard_name, controls in STANDARDS_MAP.items():
         if normalized_tag in controls:
             standard = standard_name
             break
     
-    # Crear una copia del diccionario y agregar el campo standard
+    # Create a copy of the dictionary and add the standard field
     result = control_details.copy()
     result["standard"] = standard
     return result
@@ -163,38 +178,55 @@ def format_tag_for_display(tag: str) -> str:
 
 def validate_control_tag(tag: str) -> bool:
     """
-    Valida si un tag corresponde a un control existente.
+    Validates if a tag corresponds to an existing control.
     
     Args:
-        tag: Tag a validar
+        tag: Tag to validate
     
     Returns:
-        bool: True si el tag existe, False en caso contrario
+        bool: True if the tag exists, False otherwise
     """
     normalized_tag = normalize_tag_for_lookup(tag)
     return normalized_tag in ALL_CONTROLS
 
 def get_suggested_tags_for_stride(stride_category: str) -> list:
     """
-    Obtiene tags sugeridos para una categoría STRIDE específica.
+    Gets suggested tags for a specific STRIDE category with complete information.
     
     Args:
-        stride_category: Categoría STRIDE (ej: 'SPOOFING', 'TAMPERING')
+        stride_category: STRIDE category (e.g.: 'SPOOFING', 'TAMPERING')
     
     Returns:
-        list: Lista de tags sugeridos
+        list: List of objects with complete information for suggested tags
     """
-    return STRIDE_CONTROL_EXAMPLES.get(stride_category.upper(), [])
+    # Normalize the category name - replace spaces with underscores and convert to uppercase
+    normalized_category = stride_category.upper().replace(' ', '_')
+    raw_tags = STRIDE_CONTROL_EXAMPLES.get(normalized_category, [])
+    # Create complete objects for each tag
+    results = []
+    for tag_id in raw_tags:
+        tag_info = ALL_CONTROLS.get(tag_id, {})
+        formatted_tag = format_tag_for_display(tag_id)
+        if formatted_tag:
+            results.append({
+                "tag": formatted_tag,
+                "tag_id": tag_id,
+                "title": tag_info.get('title', ''),
+                "description": tag_info.get('description', ''),
+                "category": tag_info.get('category', ''),
+                "standard": get_standard_from_tag_id(tag_id)  # Extract automatically
+            })
+    return results
 
 def categorize_tags(tags: list) -> dict:
     """
-    Categoriza una lista de tags por estándar.
+    Categorizes a list of tags by standard.
     
     Args:
-        tags: Lista de tags
+        tags: List of tags
     
     Returns:
-        dict: Diccionario con tags agrupados por estándar
+        dict: Dictionary with tags grouped by standard
     """
     categorized = {standard: [] for standard in STANDARDS_MAP.keys()}
     categorized['UNKNOWN'] = []
@@ -211,28 +243,29 @@ def categorize_tags(tags: list) -> dict:
         if not found:
             categorized['UNKNOWN'].append(tag)
     
-    # Remover categorías vacías
+    # Remove empty categories
     return {k: v for k, v in categorized.items() if v}
 
 def search_predefined_tags(query: str) -> list:
     """
-    Buscar tags predefinidos que coincidan con la consulta.
+    Search predefined tags that match the query.
+    Searches in: tag ID, title, description and also by standard.
     
     Args:
-        query: Término de búsqueda
+        query: Search term
     
     Returns:
-        list: Lista de tags que coinciden con la búsqueda
+        list: List of tags that match the search
     """
     if not query or len(query) < 2:
         return []
     
-    # Si el query ya está formateado (contiene paréntesis), extraer el tag base
+    # If the query is already formatted (contains parentheses), extract the base tag
     import re
     formatted_pattern = r'^(.+?)\s*\([^)]+\)$'
     match = re.match(formatted_pattern, query.strip())
     if match:
-        # Es un tag ya formateado como "V2.1.1 (ASVS)", extraer la parte base
+        # It's a formatted tag like "V2.1.1 (ASVS)", extract the base part
         base_query = match.group(1).strip()
         query_lower = base_query.lower()
     else:
@@ -240,40 +273,73 @@ def search_predefined_tags(query: str) -> list:
     
     all_tags = list(ALL_CONTROLS.keys())
     
-    # Buscar coincidencias exactas primero, luego parciales
+    # Search for exact matches first, then partial matches
     exact_matches = [tag for tag in all_tags if query_lower == tag.lower()]
     partial_matches = [tag for tag in all_tags if query_lower in tag.lower() and tag not in exact_matches]
     
-    # También buscar en títulos y descripciones
+    # Search by standard (e.g.: searching "ASVS" returns all ASVS tags)
+    standard_matches = []
+    query_upper = query.upper()
+    if query_upper in STANDARDS_MAP:
+        # If the query is exactly a standard, return all its tags
+        standard_matches = list(STANDARDS_MAP[query_upper])
+    else:
+        # If the query contains part of a standard, search tags from that standard
+        for standard_name, tags in STANDARDS_MAP.items():
+            if query_upper in standard_name:
+                standard_matches.extend(tags)
+    
+    # Also search in titles and descriptions
     content_matches = []
     for tag, info in ALL_CONTROLS.items():
-        if tag not in exact_matches and tag not in partial_matches:
+        if tag not in exact_matches and tag not in partial_matches and tag not in standard_matches:
             if (query_lower in info.get("title", "").lower() or 
                 query_lower in info.get("description", "").lower()):
                 content_matches.append(tag)
     
-    # Combinar y limitar resultados
-    results = exact_matches + partial_matches + content_matches
-    return results[:20]
+    # Combine results with priority: exact, partial, by standard, by content
+    results = exact_matches + partial_matches + standard_matches + content_matches
+    
+    # Remove duplicates maintaining order
+    seen = set()
+    unique_results = []
+    for tag in results:
+        if tag not in seen:
+            seen.add(tag)
+            unique_results.append(tag)
+    
+    return unique_results[:50]  # Increase limit for standard searches
 
 def get_all_predefined_tags() -> list:
     """
-    Obtener todos los tags predefinidos.
+    Get all predefined tags with complete information for tooltips.
     
     Returns:
-        list: Lista de todos los tags disponibles
+        list: List of objects with complete tag information
     """
-    return list(ALL_CONTROLS.keys())
+    results = []
+    for tag_id, tag_info in ALL_CONTROLS.items():
+        formatted_tag = format_tag_for_display(tag_id)
+        if formatted_tag:
+            results.append({
+                "tag": formatted_tag,
+                "tag_id": tag_id,
+                "title": tag_info.get('title', ''),
+                "description": tag_info.get('description', ''),
+                "category": tag_info.get('category', ''),
+                "standard": get_standard_from_tag_id(tag_id)  # Extract automatically
+            })
+    return results
 
 def get_tags_by_standard(standard: str) -> list:
     """
-    Obtener tags de un estándar específico.
+    Get tags from a specific standard.
     
     Args:
-        standard: Nombre del estándar (ej: 'ASVS', 'NIST')
+        standard: Standard name (e.g.: 'ASVS', 'NIST')
     
     Returns:
-        list: Lista de tags del estándar especificado
+        list: List of tags from the specified standard
     """
     standard_upper = standard.upper()
     if standard_upper in STANDARDS_MAP:
@@ -282,22 +348,22 @@ def get_tags_by_standard(standard: str) -> list:
 
 def get_available_standards() -> list:
     """
-    Obtiene lista de estándares disponibles cargados automáticamente.
+    Gets list of available standards loaded automatically.
     
     Returns:
-        list: Lista de nombres de estándares disponibles
+        list: List of available standard names
     """
     return list(STANDARDS_MAP.keys())
 
 def get_standard_info(standard_name: str = None) -> dict:
     """
-    Obtiene información detallada de un estándar específico o todos los estándares.
+    Gets detailed information for a specific standard or all standards.
     
     Args:
-        standard_name: Nombre del estándar (opcional)
+        standard_name: Standard name (optional)
     
     Returns:
-        dict: Información detallada del estándar o todos los estándares
+        dict: Detailed information for the standard or all standards
     """
     if standard_name:
         standard_upper = standard_name.upper()
@@ -314,7 +380,7 @@ def get_standard_info(standard_name: str = None) -> dict:
             "sample_controls": list(controls.keys())[:5]
         }
     else:
-        # Retornar información de todos los estándares
+        # Return information for all standards
         return {
             standard: {
                 "name": standard,
@@ -330,14 +396,14 @@ def get_standard_info(standard_name: str = None) -> dict:
 # =====================================================
 
 __all__ = [
-    # Diccionarios principales
+    # Main dictionaries
     'ALL_CONTROLS', 'STANDARDS_MAP', 'STRIDE_CONTROL_EXAMPLES',
     
-    # Variables dinámicas por estándar (se crean automáticamente)
+    # Dynamic variables per standard (created automatically)
     *[f"{std}_CONTROLS" for std in STANDARDS_MAP.keys()],
     *[f"{std}_TAGS" for std in STANDARDS_MAP.keys()],
     
-    # Funciones utilitarias
+    # Utility functions
     'normalize_tag_for_lookup', 'get_tag_details', 'format_tag_for_display',
     'validate_control_tag', 'get_suggested_tags_for_stride', 'categorize_tags',
     'search_predefined_tags', 'get_all_predefined_tags', 'get_tags_by_standard',

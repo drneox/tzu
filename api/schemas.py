@@ -5,12 +5,17 @@ from pydantic import BaseModel, FilePath, field_validator, Field
 from datetime import datetime
 import json
 
+class InformationSystemCreate(BaseModel):
+    title: str
+    description: str | None = None
+
 class InformationSystemBase(BaseModel):
+    id: UUID
     title: str
     description: str | None = None
   
 
-class InformationSystemBaseCreate(InformationSystemBase):
+class InformationSystemBaseCreate(InformationSystemCreate):
     pass
 
 
@@ -90,6 +95,12 @@ class Risk(BaseModel):
     
     # Residual Risk (calculated or manually set)
     residual_risk: Optional[float] = None  # 1-9 scale (allows decimal values)
+    
+    # Calculated properties (read-only)
+    likelihood_score: Optional[float] = None
+    impact_score: Optional[float] = None
+    overall_risk_score: Optional[float] = None
+    inherit_risk: Optional[str] = None
 
 
 class Threat(BaseModel):
@@ -101,6 +112,15 @@ class Threat(BaseModel):
     description:str
     remediation: Remediation
     risk: Risk
+    current_risk_level: Optional[str] = None
+
+class InformationSystem(InformationSystemBase):
+    model_config = {"from_attributes": True}
+    
+    id: UUID
+    datetime: datetime
+    diagram: str | None = None
+    threats: List[Threat] = []
 
 class ThreatWithSystem(BaseModel):
     model_config = {"from_attributes": True}
@@ -111,15 +131,8 @@ class ThreatWithSystem(BaseModel):
     description: str
     remediation: Remediation
     risk: Risk
-    information_system: InformationSystemBase
-  
-class InformationSystem(InformationSystemBase):
-    model_config = {"from_attributes": True}
-    
-    id: UUID
-    datetime: datetime
-    diagram: str | None = None
-    threats: List[Threat] = []
+    information_system: InformationSystem  # Usar la clase ya definida arriba
+    current_risk_level: Optional[str] = None
 
 
 class UserBase(BaseModel):

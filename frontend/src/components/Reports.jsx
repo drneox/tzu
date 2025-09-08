@@ -1,11 +1,9 @@
 /**
  * Componente Reports
-} from '@chakra-ui/react';
-import { ChevronLeftIcon, ChevronRightIcon } from '@chakra-ui/icons';
-import { useLocalization } from '../hooks/useLocalization';
-import { getAllThreats } from '../services/index';estra todas las amenazas de todos los sistemas con capacidad de filtrado
+ * Muestra todas las amenazas de todos los sistemas con capacidad de filtrado
  */
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import {
   Box,
   Heading,
@@ -15,23 +13,23 @@ import {
   Tr,
   Th,
   Td,
-  Button,
   HStack,
   VStack,
   Text,
   Badge,
-  useDisclosure,
   Alert,
   AlertIcon,
   Spinner,
   Center,
   Flex,
-  IconButton
+  IconButton,
+  Button,
+  Collapse
 } from '@chakra-ui/react';
-import { ChevronLeftIcon, ChevronRightIcon } from '@chakra-ui/icons';
+import { ChevronLeftIcon, ChevronRightIcon, ViewIcon, ViewOffIcon } from '@chakra-ui/icons';
 import { useLocalization } from '../hooks/useLocalization';
-import useTagCategorization from '../hooks/useTagCategorization';
 import { getAllThreats } from '../services';
+import ReportsFilters from './ReportsFilters';
 
 /**
  * Componente para mostrar el valor de riesgo con color
@@ -57,48 +55,6 @@ const RiskDisplay = ({ value, type = "current" }) => {
 };
 
 /**
- * Componente StandardsFilter
- * Filtro por estándares de control tags (simplificado para backend)
- */
-const StandardsFilter = ({ 
-  selectedStandards, 
-  onStandardToggle,
-  availableStandards
-}) => {
-  const { t } = useLocalization();
-
-  const standardNames = {
-    "ASVS": "ASVS",
-    "MASVS": "MASVS", 
-    "ISO27001": "ISO 27001",
-    "NIST": "NIST",
-    "SBS": "SBS Perú"
-  };
-
-  return (
-    <Box p={4} borderWidth={1} borderRadius="md" bg="gray.50">
-      <Text fontWeight="bold" mb={2}>Filtros por Estándar</Text>
-      <VStack align="start" spacing={2}>
-        {availableStandards.map((standard) => (
-          <HStack key={standard} justify="space-between" w="full">
-            <Button
-              size="sm"
-              variant={selectedStandards.includes(standard) ? "solid" : "outline"}
-              colorScheme={selectedStandards.includes(standard) ? "blue" : "gray"}
-              onClick={() => onStandardToggle(standard)}
-              flex={1}
-              justifyContent="center"
-            >
-              <Text>{standardNames[standard]}</Text>
-            </Button>
-          </HStack>
-        ))}
-      </VStack>
-    </Box>
-  );
-};
-
-/**
  * Componente principal Reports
  */
 const Reports = () => {
@@ -108,10 +64,17 @@ const Reports = () => {
   const [error, setError] = useState(null);
   const [selectedStandards, setSelectedStandards] = useState([]);
   const [availableStandards] = useState(['ASVS', 'MASVS', 'NIST', 'ISO27001', 'SBS']);
+  
+  // Estados para filtros de riesgo
+  const [selectedInherentRisk, setSelectedInherentRisk] = useState(null);
+  const [selectedCurrentRisk, setSelectedCurrentRisk] = useState(null);
 
   // Estados de paginación
   const [currentPage, setCurrentPage] = useState(1);
   const [threatsPerPage] = useState(20);
+
+  // Estado para controlar la visibilidad del panel de filtros
+  const [showFilters, setShowFilters] = useState(true);
 
   // Función para cargar amenazas (con filtros opcionales)
   const loadThreats = async (filters = {}) => {
@@ -127,6 +90,16 @@ const Reports = () => {
       
       const result = await getAllThreats(params);
       const threatsArray = Array.isArray(result) ? result : [];
+      
+      // DEBUG: Ver estructura completa de datos
+      if (threatsArray.length > 0) {
+        console.log('=== ESTRUCTURA COMPLETA DE AMENAZA ===');
+        console.log('Amenaza completa:', JSON.stringify(threatsArray[0], null, 2));
+        console.log('Information system keys:', Object.keys(threatsArray[0].information_system || {}));
+        console.log('Information system:', threatsArray[0].information_system);
+        console.log('Information system ID:', threatsArray[0].information_system?.id);
+        console.log('Information system title:', threatsArray[0].information_system?.title);
+      }
       
       // El backend ya devuelve las amenazas filtradas y ordenadas
       setThreats(threatsArray);
@@ -150,11 +123,19 @@ const Reports = () => {
     const filters = {};
     
     if (selectedStandards.length > 0) {
-      filters.standards = selectedStandards;
+      filters.standards = selectedStandards; // Pasar como array, no como string
+    }
+    
+    if (selectedInherentRisk) {
+      filters.inherit_risk = selectedInherentRisk;
+    }
+    
+    if (selectedCurrentRisk) {
+      filters.current_risk = selectedCurrentRisk;
     }
     
     loadThreats(filters);
-  }, [selectedStandards]);
+  }, [selectedStandards, selectedInherentRisk, selectedCurrentRisk]);
 
   // Manejar toggle de estándares
   const handleStandardToggle = (standard) => {
@@ -163,6 +144,22 @@ const Reports = () => {
         ? prev.filter(s => s !== standard)
         : [...prev, standard]
     );
+  };
+
+  // Manejar cambios en filtros de riesgo
+  const handleInherentRiskChange = (riskLevel) => {
+    setSelectedInherentRisk(riskLevel);
+  };
+
+  const handleCurrentRiskChange = (riskLevel) => {
+    setSelectedCurrentRisk(riskLevel);
+  };
+
+  // Función para limpiar todos los filtros
+  const handleClearAllFilters = () => {
+    setSelectedStandards([]);
+    setSelectedInherentRisk(null);
+    setSelectedCurrentRisk(null);
   };
 
   // Simplificar paginación - el backend ya maneja skip/limit
@@ -196,7 +193,7 @@ const Reports = () => {
       <Center h="400px">
         <VStack>
           <Spinner size="xl" />
-          <Text>Cargando amenazas...</Text>
+          <Text>{t.ui.reports.loading_threats}</Text>
         </VStack>
       </Center>
     );
@@ -206,114 +203,204 @@ const Reports = () => {
     return (
       <Alert status="error">
         <AlertIcon />
-        Error al cargar las amenazas: {error}
+        {t.ui.reports.error_loading}: {error}
       </Alert>
     );
   }
 
   return (
-    <Box p={6}>
-      <Heading size="lg" mb={6}>
-        {t.ui.menu.reports || "Reportes"} - Todas las Amenazas
-      </Heading>
+    <Box p={6} maxW="100vw" overflow="hidden">
+      <Flex justify="space-between" align="center" mb={6}>
+        <Heading size="lg">
+          {t.ui.reports.title}
+        </Heading>
+      </Flex>
 
-      <HStack align="start" spacing={6}>
-        {/* Panel de filtros */}
-        <Box minW="250px">
-          <StandardsFilter
-            selectedStandards={selectedStandards}
-            onStandardToggle={handleStandardToggle}
-            availableStandards={availableStandards}
-          />
-          
-          {/* Botón para limpiar filtros */}
-          {selectedStandards.length > 0 && (
-            <Box mt={4}>
-              <Button
-                size="sm"
-                variant="outline"
-                colorScheme="gray"
-                onClick={() => setSelectedStandards([])}
-                width="full"
-              >
-                Limpiar filtros
-              </Button>
-            </Box>
-          )}
-        </Box>
+      <Box maxW="100%" overflow="hidden">
+        <Flex direction="row" align="start" gap={6} maxW="100%">
+        {/* Panel de filtros lateral con Collapse */}
+        <Collapse in={showFilters} axis="x" animateOpacity>
+          <Box
+            minW="280px"
+            maxW="280px" 
+            p={4} 
+            borderWidth="1px" 
+            borderRadius="md" 
+            bg="gray.50"
+            h="fit-content"
+          >
+            <ReportsFilters
+              selectedStandards={selectedStandards}
+              onStandardToggle={handleStandardToggle}
+              availableStandards={availableStandards}
+              selectedInherentRisk={selectedInherentRisk}
+              selectedCurrentRisk={selectedCurrentRisk}
+              onInherentRiskChange={handleInherentRiskChange}
+              onCurrentRiskChange={handleCurrentRiskChange}
+              onClearAllFilters={handleClearAllFilters}
+            />
+          </Box>
+        </Collapse>
 
         {/* Tabla de amenazas */}
-        <Box flex={1}>
+        <Box flex={1} minW={0}>
           <VStack align="start" spacing={4}>
-            <Text fontSize="sm" color="gray.600">
-              Mostrando página {currentPage} - {currentThreats.length} amenazas
-              {selectedStandards.length > 0 && (
-                <Text as="span" ml={2} color="blue.600">
-                  (Filtrado por: {selectedStandards.join(', ')})
-                </Text>
-              )}
-            </Text>
+            <Flex justify="space-between" align="center" w="full">
+              {/* Botón para mostrar/ocultar filtros */}
+              <Button
+                leftIcon={showFilters ? <ViewOffIcon /> : <ViewIcon />}
+                onClick={() => setShowFilters(!showFilters)}
+                variant="outline"
+                size="sm"
+                colorScheme="blue"
+                position="relative"
+              >
+                {showFilters ? t.ui.reports.hide_filters : t.ui.reports.show_filters}
+                {/* Indicador de filtros activos cuando están ocultos */}
+                {!showFilters && (selectedStandards.length > 0 || selectedInherentRisk || selectedCurrentRisk) && (
+                  <Box
+                    position="absolute"
+                    top="-2px"
+                    right="-2px"
+                    w="8px"
+                    h="8px"
+                    bg="red.500"
+                    borderRadius="full"
+                    border="2px solid white"
+                  />
+                )}
+              </Button>
+
+              <Text fontSize="sm" color="gray.600">
+                {t.ui.reports.showing_page} {currentPage} - {currentThreats.length} {t.ui.reports.threats}
+                {(selectedStandards.length > 0 || selectedInherentRisk || selectedCurrentRisk) && (
+                  <Text as="span" ml={2} color="blue.600">
+                    ({t.ui.reports.filtered_by}: {[
+                      ...(selectedStandards.length > 0 ? [`${t.ui.reports.standards}: ${selectedStandards.join(', ')}`] : []),
+                      ...(selectedInherentRisk ? [`${t.ui.reports.inherent_risk}: ${selectedInherentRisk}`] : []),
+                      ...(selectedCurrentRisk ? [`${t.ui.reports.current_risk}: ${selectedCurrentRisk}`] : [])
+                    ].join(' | ')})
+                  </Text>
+                )}
+                {!showFilters && (selectedStandards.length > 0 || selectedInherentRisk || selectedCurrentRisk) && (
+                  <Text as="span" ml={2} color="orange.600" fontSize="xs">
+                    • {t.ui.reports.active_filters_hidden}
+                  </Text>
+                )}
+              </Text>
+            </Flex>
 
             <Table variant="simple" size="sm">
               <Thead>
                 <Tr>
-                  <Th>Sistema</Th>
-                  <Th>Tipo</Th>
-                  <Th>Título</Th>
-                  <Th>Descripción</Th>
-                  <Th>Riesgo Actual</Th>
-                  <Th>Riesgo Residual</Th>
-                  <Th>Tags</Th>
+                  <Th>{t.ui.reports.threat_modelling}</Th>
+                  <Th>{t.ui.description}</Th>
+                  <Th>{t.ui.type}</Th>
+                  <Th>{t.ui.reports.inherent_risk}</Th>
+                  <Th>{t.ui.reports.current_risk}</Th>
+                  <Th>{t.ui.reports.residual_risk}</Th>
+                  <Th>{t.ui.reports.tags}</Th>
                 </Tr>
               </Thead>
               <Tbody>
                 {Array.isArray(currentThreats) && currentThreats.length > 0 ? (
                   currentThreats.map((threat) => {
-                    const currentRisk = calculateCurrentRisk(threat.risk);
-                    const residualRisk = threat.risk?.residual_risk || 0;      
+                    const inheritRisk = threat.risk?.inherit_risk || 'N/A';
+                    const currentRiskLevel = threat.current_risk_level || 'N/A';
+                    const residualRisk = threat.risk?.residual_risk || null;
+                    
+                    // Debug: Ver datos del sistema
+                    if (threat.information_system) {
+                      console.log('Sistema encontrado:', {
+                        id: threat.information_system.id,
+                        title: threat.information_system.title,
+                        hasId: !!threat.information_system.id
+                      });
+                    } else {
+                      console.log('Sin sistema de información para amenaza:', threat.id);
+                    }
+                    
+                    const getRiskBadgeColor = (risk) => {
+                      switch(risk) {
+                        case 'LOW': return 'green';
+                        case 'MEDIUM': return 'yellow';
+                        case 'HIGH': return 'orange';
+                        case 'CRITICAL': return 'red';
+                        default: return 'gray';
+                      }
+                    };
+
+                    const getRiskLevelFromScore = (score) => {
+                      if (score === null || score === undefined) return null;
+                      if (score <= 3) return 'LOW';
+                      if (score <= 6) return 'MEDIUM';
+                      return 'HIGH';
+                    };
+                    
                     return (
                       <Tr key={threat.id}>
                         <Td>
-                          <Text fontWeight="medium" fontSize="sm">
-                            {threat.information_system?.title || 'N/A'}
-                          </Text>
-                        </Td>
-                        <Td>
-                          <Badge colorScheme="purple" size="sm">
-                            {threat.type}
-                          </Badge>
+                          {threat.information_system?.title && threat.information_system?.id ? (
+                            <Link to={`/analysis/${threat.information_system.id}`}>
+                              <Text fontWeight="medium" fontSize="sm" color="blue.600" _hover={{ textDecoration: 'underline' }}>
+                                {threat.information_system.title}
+                              </Text>
+                            </Link>
+                          ) : (
+                            <Text fontWeight="medium" fontSize="sm" color="gray.500">
+                              N/A
+                            </Text>
+                          )}
                         </Td>
                         <Td>
                           <Text fontWeight="medium" fontSize="sm">
                             {threat.title}
                           </Text>
                         </Td>
-                        <Td maxW="300px">
-                          <Text fontSize="sm" noOfLines={2}>
-                            {threat.description}
-                          </Text>
+                        <Td>
+                          <Badge colorScheme="blue" size="sm">
+                            {threat.type}
+                          </Badge>
+                        </Td>
+            
+                        <Td>
+                          <Badge 
+                            colorScheme={getRiskBadgeColor(inheritRisk)} 
+                            size="sm"
+                          >
+                            {inheritRisk}
+                          </Badge>
                         </Td>
                         <Td>
-                          <RiskDisplay value={currentRisk} type="current" />
+                          <Badge 
+                            colorScheme={getRiskBadgeColor(currentRiskLevel)} 
+                            size="sm"
+                          >
+                            {currentRiskLevel}
+                          </Badge>
                         </Td>
                         <Td>
-                          {residualRisk > 0 ? (
-                            <RiskDisplay value={residualRisk} type="residual" />
+                          {residualRisk !== null ? (
+                            <Badge 
+                              colorScheme={getRiskBadgeColor(getRiskLevelFromScore(residualRisk))} 
+                              size="sm"
+                            >
+                              {getRiskLevelFromScore(residualRisk)}
+                            </Badge>
                           ) : (
                             <Text fontSize="sm" color="gray.500">N/A</Text>
                           )}
                         </Td>
                         <Td>
-                          <HStack wrap="wrap" spacing={1}>
-                            {(threat.remediation?.control_tags || []).slice(0, 3).map((tag, index) => (
-                              <Badge key={index} size="xs" variant="outline">
-                                {tag}
-                              </Badge>
-                            ))}
-                            {(threat.remediation?.control_tags?.length || 0) > 3 && (
-                              <Badge size="xs" colorScheme="gray">
-                                +{(threat.remediation?.control_tags?.length || 0) - 3}
-                              </Badge>
+                          <HStack spacing={1} wrap="wrap">
+                            {Array.isArray(threat.remediation?.control_tags) && threat.remediation.control_tags.length > 0 ? (
+                              threat.remediation.control_tags.map((tag, index) => (
+                                <Badge key={index} colorScheme="gray" size="sm">
+                                  {tag}
+                                </Badge>
+                              ))
+                            ) : (
+                              <Text fontSize="sm" color="gray.500">{t.ui.reports.no_tags}</Text>
                             )}
                           </HStack>
                         </Td>
@@ -322,13 +409,8 @@ const Reports = () => {
                   })
                 ) : (
                   <Tr>
-                    <Td colSpan={8} textAlign="center" py={8}>
-                      <Text color="gray.500">
-                        {selectedStandards.length > 0 
-                          ? `No se encontraron amenazas para los estándares seleccionados: ${selectedStandards.join(', ')}`
-                          : 'No hay amenazas disponibles'
-                        }
-                      </Text>
+                    <Td colSpan={7} textAlign="center">
+                      <Text color="gray.500">{t.ui.reports.no_threats}</Text>
                     </Td>
                   </Tr>
                 )}
@@ -343,11 +425,11 @@ const Reports = () => {
                   onClick={prevPage}
                   isDisabled={currentPage === 1}
                   size="sm"
-                  aria-label="Página anterior"
+                  aria-label={t.ui.reports.previous_page}
                 />
                 
                 <Text fontSize="sm">
-                  Página {currentPage}
+                  {t.ui.reports.page} {currentPage}
                 </Text>
                 
                 <IconButton
@@ -355,13 +437,14 @@ const Reports = () => {
                   onClick={nextPage}
                   isDisabled={currentThreats.length < threatsPerPage}
                   size="sm"
-                  aria-label="Página siguiente"
+                  aria-label={t.ui.reports.next_page}
                 />
               </Flex>
             )}
           </VStack>
         </Box>
-      </HStack>
+      </Flex>
+      </Box>
     </Box>
   );
 };

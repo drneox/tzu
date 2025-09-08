@@ -13,7 +13,7 @@ import schemas
 # Import STRIDE normalization function
 from stride_validator import normalize_stride_category
 
-def get_all_threats(db: Session, skip: int = 0, limit: int = 100, system_id: Optional[str] = None, standards: Optional[list] = None, risk_level: Optional[str] = None):
+def get_all_threats(db: Session, skip: int = 0, limit: int = 100, system_id: Optional[str] = None, standards: Optional[list] = None, inherit_risk: Optional[str] = None, current_risk: Optional[str] = None):
     """Gets all threats with optional filters"""
     
     query = db.query(models.Threat).options(
@@ -29,9 +29,39 @@ def get_all_threats(db: Session, skip: int = 0, limit: int = 100, system_id: Opt
         except ValueError:
             return []
     
-    # Filtro por nivel de riesgo
-    if risk_level:
-        query = query.join(models.Risk).filter(models.Risk.level == risk_level)
+        # Filtro por riesgo inherente
+    if inherit_risk:
+        query = query.join(models.Risk).filter(models.Risk.inherit_risk == inherit_risk)
+    
+    # Filtro por riesgo actual (considerando estado de remediación)
+    if current_risk:
+        from sqlalchemy import case, and_
+        
+        # Unir con Risk y Remediation si no se han unido ya
+        if not inherit_risk:
+            query = query.join(models.Risk)
+        query = query.join(models.Remediation)
+        
+        # Crear lógica condicional para riesgo actual:
+        # Si remediation.status = True Y residual_risk no es NULL, usar residual_risk
+        # Sino, usar inherit_risk
+        current_risk_expression = case(
+            (
+                and_(
+                    models.Remediation.status == True,
+                    models.Risk.residual_risk.isnot(None)
+                ),
+                case(
+                    (models.Risk.residual_risk < 3, "LOW"),
+                    (models.Risk.residual_risk < 6, "MEDIUM"),
+                    (models.Risk.residual_risk < 9, "HIGH"),
+                    else_="CRITICAL"
+                )
+            ),
+            else_=models.Risk.inherit_risk
+        )
+        
+        query = query.filter(current_risk_expression == current_risk)
     
     # Filtro por estándares - usando SQL directo para JSON
     if standards and len(standards) > 0:
@@ -409,4 +439,52 @@ def delete_user(db: Session, user_id: UUID):
     db.delete(db_user)
     db.commit()
     return db_user
+
+
+def delete_threat(db: Session, threat_id: str):
+    """
+    Delete a threat and its associated risk and remediation.
+    
+    Args:
+        db: Database session
+        threat_id: UUID string of the threat to delete
+        
+    Returns:
+        bool: True if threat was deleted, False if not found
+    """
+    from uuid import UUID
+    
+    # Convert string UUID to UUID object
+    try:
+        uuid_obj = UUID(threat_id)
+    except ValueError:
+        return False
+    
+    # Get the threat with relationships
+    threat = db.query(models.Threat).filter(models.Threat.id == uuid_obj).first()
+    if not threat:
+        return False
+    
+    # Store IDs for cleanup
+    risk_id = threat.risk_id
+    remediation_id = threat.remediation_id
+    
+    # Delete the threat first
+    db.delete(threat)
+    
+    # Delete associated risk
+    if risk_id:
+        risk = db.query(models.Risk).filter(models.Risk.id == risk_id).first()
+        if risk:
+            db.delete(risk)
+    
+    # Delete associated remediation
+    if remediation_id:
+        remediation = db.query(models.Remediation).filter(models.Remediation.id == remediation_id).first()
+        if remediation:
+            db.delete(remediation)
+    
+    # Commit all changes
+    db.commit()
+    return True
 

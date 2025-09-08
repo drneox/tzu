@@ -11,7 +11,9 @@ import apiClient from './apiClient';
  * @param {number} params.limit - Límite de registros a obtener
  * @param {Array} params.standards - Lista de estándares para filtrar
  * @param {string} params.systemId - ID del sistema de información
- * @param {string} params.riskLevel - Nivel de riesgo a filtrar
+ * @param {string} params.riskLevel - Nivel de riesgo a filtrar (deprecated, usar inherit_risk o current_risk)
+ * @param {string} params.inherit_risk - Filtro por riesgo inherente (LOW, MEDIUM, HIGH, CRITICAL)
+ * @param {string} params.current_risk - Filtro por riesgo actual (LOW, MEDIUM, HIGH, CRITICAL)
  * @returns {Promise} - Promise con el reporte de amenazas filtradas
  */
 export const getThreatsReport = async ({ 
@@ -19,7 +21,9 @@ export const getThreatsReport = async ({
   limit = 1000, 
   standards = null, 
   systemId = null, 
-  riskLevel = null 
+  riskLevel = null,
+  inherit_risk = null,
+  current_risk = null
 } = {}) => {
   try {
     const params = { skip, limit };
@@ -33,6 +37,12 @@ export const getThreatsReport = async ({
     }
     if (riskLevel) {
       params.risk_level = riskLevel;
+    }
+    if (inherit_risk) {
+      params.inherit_risk = inherit_risk;
+    }
+    if (current_risk) {
+      params.current_risk = current_risk;
     }
     
     const response = await apiClient.get('/report', { params });

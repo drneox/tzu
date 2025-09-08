@@ -12,7 +12,8 @@ from unittest.mock import MagicMock
 
 # TEST ENVIRONMENT CONFIGURATION: Set up test environment variables BEFORE importing modules
 # This ensures modules load with the correct configuration
-os.environ["DATABASE_URL"] = "sqlite:///./test.db"  # Test database
+TEST_DATABASE_URL = "sqlite:///./test.db"
+os.environ["DATABASE_URL"] = TEST_DATABASE_URL       # Test database
 os.environ["OPENAI_API_KEY"] = "test-key"           # Mock API key for tests
 os.environ["ENVIRONMENT"] = "test"                  # Mark test environment
 os.environ["SECRET_KEY"] = "test-secret-key-for-jwt-at-least-32-characters-long"  # JWT secret for tests
@@ -31,8 +32,6 @@ from database import get_db
 
 # TEST DATABASE CONFIGURATION
 # Create specific database engine for tests with in-memory SQLite
-TEST_DATABASE_URL = "sqlite:///./test.db"
-
 test_engine = create_engine(
     TEST_DATABASE_URL,
     connect_args={"check_same_thread": False},
