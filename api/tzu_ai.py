@@ -3,6 +3,8 @@ from types import SimpleNamespace
 import os
 from any_llm import completion
 import control_tags
+import standards
+from stride_validator import get_valid_stride_categories
 
 # Docker Compose pasa las variables de entorno automáticamente
 # No necesitamos load_dotenv() ya que las variables están disponibles via env
@@ -12,14 +14,14 @@ def generate_control_tags_examples():
     Genera ejemplos dinámicos de control tags basados en las definiciones del sistema
     """
     examples = {}
-    stride_categories = ["Spoofing", "Tampering", "Repudiation", "Information Disclosure", "Denial of Service", "Elevation of Privilege"]
+    stride_categories = list(get_valid_stride_categories())
     
     for category in stride_categories:
         try:
             # Get suggested tags for each STRIDE category
             suggested_tags = control_tags.get_suggested_tags_for_stride(category)
             # Format tags with parentheses for AI display
-            formatted_tags = [control_tags.format_tag_for_display(tag) for tag in suggested_tags[:3]]  # Only first 3
+            formatted_tags = [tag["tag"] for tag in suggested_tags[:3]]  # Only first 3
             examples[category] = formatted_tags
         except:
             # Fallback in case of error
@@ -31,6 +33,11 @@ def clientAI(base64_image):
   try:
     # Generar ejemplos dinámicos de control tags
     control_tag_examples = generate_control_tags_examples()
+    
+    # Generar información dinámica sobre estándares disponibles
+    available_standards = standards.get_available_standards()
+    standards_list = ", ".join(available_standards)
+    standards_info = f"The system includes {len(standards.ALL_CONTROLS)} security controls from  {len(available_standards)} international standards: {standards_list}."
     
     # Construir ejemplos para el prompt
     examples_text = ""
@@ -47,20 +54,23 @@ Important requirements:
 - Each threat must explicitly mention the **asset or flow** affected in the diagram (e.g., login form, API Gateway, session token, OTP mechanism, transaction service).
 - Each threat must be classified into exactly ONE **STRIDE category**: Spoofing, Tampering, Repudiation, Information Disclosure, Denial of Service, or Elevation of Privilege.
 - Each threat must include **concrete remediation controls** with clear, actionable mitigation steps (e.g., implement multi-factor authentication, validate all inputs, use secure session management, maintain audit logs).
-- For compliance-related threats, explicitly reference the **SBS Perú Cybersecurity Regulation** in remediation description.
-- Each threat must include **control_tags** array with specific security control identifiers based on the threat type and remediation.
+- Each remediation MUST have a **direct mapping** to the control_tags provided.
+- For compliance-related threats, explicitly reference the **SBS Perú Cybersecurity Regulation** in the remediation description and in the control_tags.
+- Each threat must include a **control_tags array** with specific identifiers from at least two different standards (e.g., one ASVS + one MASVS, or ASVS + ISO27001). Control tags must always be aligned with the remediation step.
 - Use ONLY the allowed numeric values for OWASP Risk Rating factors (no decimals, no values outside the list).
 - Output MUST be in **Spanish** and ONLY in JSON format.
 
 Control Tags Guidelines:
-Generate appropriate control tags based on the STRIDE category and specific threat. Use these examples as reference:
+{standards_info}
 
+- Select controls that are SPECIFIC and MATCH the remediation described.
+- Use a diversity of standards depending on the threat type.
+- Examples:
 {examples_text}
 
 Remediation Format:
-- Write clear, actionable mitigation steps without control references in parentheses
-- Control references go in the separate control_tags array
-- Focus on specific implementation details and best practices
+- Write clear, actionable mitigation steps without control references in the text.
+- Control references must only go inside the control_tags array.
 - Example: "Implementar autenticación multifactor obligatoria para todas las transacciones financieras y validar la identidad del usuario mediante al menos dos factores diferentes."
 
 Allowed values:
@@ -134,7 +144,7 @@ Use the following JSON output structure:
           "url": f"data:image/jpeg;base64,{base64_image}"
         }}
       ],
-      "max_tokens": 3000000}
+      "max_tokens": None}
     ])
     
     # Extraer el texto de la respuesta

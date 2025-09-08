@@ -30,21 +30,9 @@ try:
 except ImportError:
     # If the function doesn't exist in standards module, provide a fallback
     def get_all_predefined_tags():
-        """Get all predefined tags from ALL_CONTROLS formatted with standards as objects"""
-        from standards import get_standard_from_tag_id
-        results = []
-        for tag_id, tag_info in ALL_CONTROLS.items():
-            formatted_tag = format_tag_for_display(tag_id)
-            if formatted_tag:
-                results.append({
-                    "tag": formatted_tag,
-                    "tag_id": tag_id,
-                    "title": tag_info.get('title', ''),
-                    "description": tag_info.get('description', ''),
-                    "category": tag_info.get('category', ''),
-                    "standard": get_standard_from_tag_id(tag_id)  # Extraer automáticamente
-                })
-        return results
+        """Get all predefined tags from ALL_CONTROLS formatted with standards"""
+        all_tag_ids = list(ALL_CONTROLS.keys())
+        return [format_tag_for_display(tag_id) for tag_id in all_tag_ids]
 
 # Make everything available at module level
 __all__ = [
@@ -73,44 +61,22 @@ def search_control_tags(query: str, limit: int = 50):
         limit: Maximum number of results to return
         
     Returns:
-        list: List of control tag objects with full information for tooltips
+        list: List of formatted control tag strings (e.g., "V2.1.1 (ASVS)")
     """
-    from standards import get_standard_from_tag_id
-    
     if not query or query.strip() == "":
         # Return all tags for empty query
         all_tag_ids = list(ALL_CONTROLS.keys())[:limit]
-        results = []
-        for tag_id in all_tag_ids:
-            tag_info = ALL_CONTROLS.get(tag_id, {})
-            results.append({
-                "tag": format_tag_for_display(tag_id),
-                "tag_id": tag_id,
-                "title": tag_info.get('title', ''),
-                "description": tag_info.get('description', ''),
-                "category": tag_info.get('category', ''),
-                "standard": get_standard_from_tag_id(tag_id)  # Extraer automáticamente
-            })
-        return results
+        return [format_tag_for_display(tag_id) for tag_id in all_tag_ids]
     
     # Use the standards search function and format the results
     matching_tag_ids = search_predefined_tags(query)
     
-    # Create detailed objects for each tag
+    # Format the tag IDs for display
     results = []
     for tag_id in matching_tag_ids[:limit]:
-        tag_info = ALL_CONTROLS.get(tag_id, {})
         formatted_tag = format_tag_for_display(tag_id)
         if formatted_tag:
-            results.append({
-                "tag": formatted_tag,
-                "tag_id": tag_id,
-                "title": tag_info.get('title', ''),
-                "description": tag_info.get('description', ''),
-                "category": tag_info.get('category', ''),
-                "standard": get_standard_from_tag_id(tag_id)  # Extraer automáticamente
-            })
+            results.append(formatted_tag)
     
     return results
 
-get_stride_suggestions = get_suggested_tags_for_stride
