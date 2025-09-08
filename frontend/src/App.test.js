@@ -4,6 +4,6 @@ import App from './App';
 
 test('renders TZU Security login form', () => {
   render(<App />);
-  const titleElement = screen.getByText(/TZU Security/i);
+  const titleElement = screen.getByText(/TZU Login/i);
   expect(titleElement).toBeInTheDocument();
 });

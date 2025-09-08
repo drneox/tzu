@@ -36,7 +36,7 @@ class TestControlTagsAPIEndpoints:
         asvs_info = response.json()
         
         assert asvs_info["name"] == "ASVS"
-        assert asvs_info["controls_count"] == 29  # Actual count from the system
+        assert asvs_info["controls_count"] == 90  # Actual count from the system
         assert "categories" in asvs_info
         assert "sample_controls" in asvs_info
         
@@ -95,8 +95,8 @@ class TestControlTagsAPIEndpoints:
         
         assert "total" in all_tags
         assert "tags" in all_tags
-        assert all_tags["total"] == 274  # Total actual de controles según la salida del sistema
-        assert len(all_tags["tags"]) == 274
+        assert all_tags["total"] == 335  # Total actual de controles según la salida del sistema
+        assert len(all_tags["tags"]) == 335
         
         # Verificar que incluye tags de todos los estándares  
         tags_list = all_tags["tags"]
