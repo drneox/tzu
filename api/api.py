@@ -1186,7 +1186,24 @@ async def search_control_tags(
             else:
                 # Compatibilidad con formato anterior
                 search_results.append(str(item))
-        
+                
+                # Extraer tag_id del formato "A.9.4.1 (ISO27001)"
+                item_str = str(item)
+                if "(" in item_str and ")" in item_str:
+                    tag_id = item_str.split(" (")[0].strip()
+                    standard_part = item_str.split(" (")[1].replace(")", "").strip()                    
+                    # Buscar información detallada en ALL_CONTROLS
+                    from standards import ALL_CONTROLS
+                    if tag_id in ALL_CONTROLS:
+                        control_info = ALL_CONTROLS[tag_id]
+                        detailed_item = {
+                            "tag": tag_id,
+                            "title": control_info.get("title", ""),
+                            "description": control_info.get("description", ""),
+                            "category": control_info.get("category", ""),
+                            "standard": standard_part
+                        }
+                        detailed_results.append(detailed_item)        
         return {
             "query": query,
             "results": search_results,
@@ -1375,8 +1392,8 @@ async def get_stride_control_suggestions(
             }
         
         try:
-            from control_tags import get_stride_suggestions
-            suggestions = get_stride_suggestions(normalized_category)
+            from control_tags import get_suggested_tags_for_stride
+            suggestions = get_suggested_tags_for_stride(normalized_category)
         except ImportError:
             # Fallback with empty suggestions if function doesn't exist
             suggestions = []
