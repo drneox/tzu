@@ -1,4 +1,4 @@
-# TZU - Threat Zero Utility 🛡️
+# TZU 🛡️
 
 [![Version](https://img.shields.io/github/v/release/drneox/tzu?include_prereleases)](https://github.com/drneox/tzu/releases)
 [![Build Status](https://img.shields.io/github/actions/workflow/status/drneox/tzu/python-app-test.yml)](https://github.com/drneox/tzu/actions/workflows/python-app-test.yml)
