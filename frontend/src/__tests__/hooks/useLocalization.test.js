@@ -73,11 +73,11 @@ describe('getOwaspSelectOptions', () => {
       values: {
         skill_level: {
           "0": "N/A",
-          "1": "Habilidades de penetración de seguridad",
-          "3": "Habilidades de red y programación",
+          "1": "Sin habilidades técnicas",
+          "3": "Algunas habilidades técnicas",
           "5": "Usuario avanzado de computadoras",
-          "6": "Algunas habilidades técnicas", 
-          "9": "Sin habilidades técnicas"
+          "6": "Habilidades de red y programación", 
+          "9": "Habilidades de penetración de seguridad"
         },
         motive: {
           "0": "N/A",
@@ -99,7 +99,7 @@ describe('getOwaspSelectOptions', () => {
     });
     expect(options[5]).toEqual({
       value: 9,
-      label: '9 - Sin habilidades técnicas'
+      label: '9 - Habilidades de penetración de seguridad'
     });
   });
 

@@ -261,18 +261,18 @@ describe('Analysis Component - Risk Calculations', () => {
     });
 
     test('should handle skill level scale correctly', () => {
-      // Test that the inverted skill level scale works correctly
+      // Test that the skill level scale works correctly
       const skillLevelDescriptions = {
-        1: 'Habilidades de penetración de seguridad', // Lowest risk (expert required)
-        3: 'Habilidades de red y programación',
+        1: 'Sin habilidades técnicas', // Highest risk (anyone can do it)
+        3: 'Algunas habilidades técnicas',
         5: 'Usuario avanzado de computadoras',
-        6: 'Algunas habilidades técnicas',
-        9: 'Sin habilidades técnicas' // Highest risk (anyone can do it)
+        6: 'Habilidades de red y programación',
+        9: 'Habilidades de penetración de seguridad' // Lowest risk (expert required)
       };
 
-      // Verify the scale is inverted (higher value = easier to execute = higher risk)
-      expect(skillLevelDescriptions[9]).toContain('Sin habilidades');
-      expect(skillLevelDescriptions[1]).toContain('penetración');
+      // Verify the scale (higher value = more skills required = lower risk)
+      expect(skillLevelDescriptions[1]).toContain('Sin habilidades');
+      expect(skillLevelDescriptions[9]).toContain('penetración');
     });
   });
 
