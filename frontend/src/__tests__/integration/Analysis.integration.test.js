@@ -62,11 +62,11 @@ jest.mock('../../hooks/useLocalization', () => ({
     changeLanguage: jest.fn()
   }),
   getOwaspSelectOptions: jest.fn().mockReturnValue([
-    { value: 1, label: '1 - Habilidades de penetración de seguridad' },
-    { value: 3, label: '3 - Habilidades de red y programación' },
+    { value: 1, label: '1 - Sin habilidades técnicas' },
+    { value: 3, label: '3 - Algunas habilidades técnicas' },
     { value: 5, label: '5 - Usuario avanzado de computadoras' },
-    { value: 6, label: '6 - Algunas habilidades técnicas' },
-    { value: 9, label: '9 - Sin habilidades técnicas' }
+    { value: 6, label: '6 - Habilidades de red y programación' },
+    { value: 9, label: '9 - Habilidades de penetración de seguridad' }
   ])
 }));
 

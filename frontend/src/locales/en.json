@@ -27,11 +27,11 @@
     "values": {
       "skill_level": {
         "0": "N/A",
-        "1": "Security penetration skills",
-        "3": "Network and programming skills",
+        "1": "No technical skills",
+        "3": "Some technical skills",
         "5": "Advanced computer user",
-        "6": "Some technical skills",
-        "9": "No technical skills"
+        "6": "Network and programming skills",
+        "9": "Security penetration skills"
       },
       "motive": {
         "0": "N/A",
