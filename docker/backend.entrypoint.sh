@@ -62,13 +62,13 @@ setup_environment() {
     set +a
     
     # Validate required API keys
-    if [ -z "$OPENAI_API_KEY" ] && [ -z "$ANTHROPIC_API_KEY" ]; then
-        echo "❌ ERROR: No AI API keys found"
-        echo "📝 Please set at least one: OPENAI_API_KEY or ANTHROPIC_API_KEY in your .env file"
+    if [ -z "$AI_API_KEY" ]; then
+        echo "❌ ERROR: AI_API_KEY not found"
+        echo "📝 Please set AI_API_KEY in your .env file"
         echo "🔧 Copy .env.example to .env and configure your API keys"
         exit 1
     else
-        echo "✅ AI API key(s) configured"
+        echo "✅ AI API key configured"
     fi
     
     echo "📋 Environment configuration completed"

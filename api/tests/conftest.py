@@ -14,7 +14,7 @@ from unittest.mock import MagicMock
 # This ensures modules load with the correct configuration
 TEST_DATABASE_URL = "sqlite:///./test.db"
 os.environ["DATABASE_URL"] = TEST_DATABASE_URL       # Test database
-os.environ["OPENAI_API_KEY"] = "test-key"           # Mock API key for tests
+os.environ["AI_API_KEY"] = "test-key"               # Mock API key for tests
 os.environ["ENVIRONMENT"] = "test"                  # Mark test environment
 os.environ["SECRET_KEY"] = "test-secret-key-for-jwt-at-least-32-characters-long"  # JWT secret for tests
 

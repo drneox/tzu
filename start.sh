@@ -12,11 +12,11 @@ echo "╚═══════════════════════�
 echo ""
 echo "🚀 Starting TZU with Docker..."
 
-# Detect Docker Compose command
-if command -v docker-compose &> /dev/null; then
-    COMPOSE_CMD="docker-compose"
-elif command -v docker &> /dev/null && docker compose version &> /dev/null 2>&1; then
+# Detect Docker Compose command (prefer V2 plugin over legacy V1)
+if command -v docker &> /dev/null && docker compose version &> /dev/null 2>&1; then
     COMPOSE_CMD="docker compose"
+elif command -v docker-compose &> /dev/null; then
+    COMPOSE_CMD="docker-compose"
 else
     echo "❌ Error: Docker Compose is not installed"
     exit 1
@@ -50,17 +50,17 @@ check_container_status() {
         local containers_info=$($compose_cmd ps --format "table {{.Service}}\t{{.Status}}" 2>/dev/null)
         local all_running=true
         local failed_services=""
-        
+
         # Check each expected service
         for service in postgresql backend frontend nginx; do
-            local service_status=$(echo "$containers_info" | grep "^$service" | awk '{print $2}')
-            
-            if [[ -z "$service_status" ]]; then
+            local service_line=$(echo "$containers_info" | grep "^$service")
+
+            if [[ -z "$service_line" ]]; then
                 all_running=false
                 failed_services="$failed_services $service(not_found)"
-            elif [[ "$service_status" != "running" ]] && [[ "$service_status" != "Up" ]] && [[ ! "$service_status" =~ ^Up ]]; then
+            elif [[ ! "$service_line" =~ Up ]] && [[ ! "$service_line" =~ running ]]; then
                 all_running=false
-                failed_services="$failed_services $service($service_status)"
+                failed_services="$failed_services $service(not_running)"
             fi
         done
         

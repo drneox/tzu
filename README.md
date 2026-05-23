@@ -59,9 +59,8 @@ cd tzu
 # Edit .env file to add your API key and timezone
 cp .env.example .env
 # Then edit .env and configure:
-# - Choose ONE AI provider (not both):
-#   * OPENAI_API_KEY=your_openai_key_here OR
-#   * ANTHROPIC_API_KEY=your_anthropic_key_here
+# - Set your AI provider key:
+#   * AI_API_KEY=your_api_key_here
 # - TZ=your_timezone (e.g., America/New_York, Europe/London, America/Lima)
 
 # 3. Run the automated setup script
