@@ -58,9 +58,10 @@ export const createInformationSystem = async (data) => {
 };
 
 /**
- * Sube y procesa un diagrama para un sistema de información
+ * Sube y procesa un archivo de diagrama para un sistema de información.
+ * Soporta imágenes (PNG, JPG, WebP, GIF, BMP), PDF, XML, JSON, SVG, TXT y MD.
  * @param {string} id - ID del sistema
- * @param {File} file - Archivo de imagen del diagrama
+ * @param {File} file - Archivo del diagrama
  * @returns {Promise} - Promise con la respuesta del servidor
  */
 export const uploadDiagram = async (id, file) => {
@@ -68,15 +69,39 @@ export const uploadDiagram = async (id, file) => {
     console.log(`Preparando para subir archivo ${file.name} para el sistema ${id}`);
     const formData = new FormData();
     formData.append("file", file);
-    
+
     const response = await apiClient.post(`/evaluate/${id}`, formData, {
       headers: { "Content-Type": "multipart/form-data" }
     });
-    
+
     console.log("Respuesta recibida:", response.data);
     return response;
   } catch (error) {
     console.error("Error al subir el diagrama:", error);
+    throw error;
+  }
+};
+
+/**
+ * Envía una descripción textual de un sistema para análisis de amenazas.
+ * @param {string} id - ID del sistema
+ * @param {string} text - Descripción textual de la arquitectura o diagrama
+ * @returns {Promise} - Promise con la respuesta del servidor
+ */
+export const uploadDiagramText = async (id, text) => {
+  try {
+    console.log(`Enviando descripción de texto para el sistema ${id}`);
+    const formData = new FormData();
+    formData.append("text_content", text);
+
+    const response = await apiClient.post(`/evaluate/${id}`, formData, {
+      headers: { "Content-Type": "multipart/form-data" }
+    });
+
+    console.log("Respuesta recibida:", response.data);
+    return response;
+  } catch (error) {
+    console.error("Error al enviar descripción de texto:", error);
     throw error;
   }
 };

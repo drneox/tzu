@@ -47,6 +47,7 @@ const Analysis = () => {
   const { id } = useParams();
   const [serviceData, setServiceData] = useState(null);
   const [threats, setThreats] = useState([]);
+  const [diagramTextContent, setDiagramTextContent] = useState(null);
   const [deletedThreats, setDeletedThreats] = useState([]);
   const [inherentRisks, setInherentRisks] = useState({});
   const [residualRisks, setResidualRisks] = useState({});
@@ -376,9 +377,21 @@ const Analysis = () => {
   const fetchData = async () => {
     setIsLoading(true);
     const data = await fetchInformationSystemById(id);
-    
+
     setServiceData(data);
     setThreats(data?.threats || []);
+
+    if (data?.diagram_input_type === "text" && data?.diagram) {
+      try {
+        const res = await fetch(`/diagrams/${data.diagram}`);
+        const text = await res.text();
+        setDiagramTextContent(text);
+      } catch {
+        setDiagramTextContent(null);
+      }
+    } else {
+      setDiagramTextContent(null);
+    }
     
     // Inicializar los riesgos inherentes y residuales
     if (data && data.threats) {
@@ -561,25 +574,48 @@ const Analysis = () => {
           
           <Box>
             <Text fontWeight="bold" color="blue.600" fontSize="md" mb={4}>
-              {t?.ui?.diagram || 'Diagram'}:
+              {serviceData.diagram_input_type === "text"
+                ? (t?.ui?.architecture_description || 'Descripción de Arquitectura')
+                : (t?.ui?.diagram || 'Diagram')}:
             </Text>
-            <Flex justifyContent="center">
-              <ChakraImage 
-                src={`/diagrams/${serviceData.diagram}`} 
-                alt={serviceData.title}
-                maxWidth="600px"
-                maxHeight="400px"
-                objectFit="contain"
+
+            {serviceData.diagram_input_type === "text" ? (
+              <Box
+                bg="gray.50"
                 border="1px solid"
                 borderColor="gray.200"
                 borderRadius="md"
-                shadow="md"
-                cursor="pointer"
-                _hover={{ shadow: "lg", transform: "scale(1.02)" }}
-                transition="all 0.2s"
-                onClick={onOpen}
-              />
-            </Flex>
+                p={4}
+                maxH="360px"
+                overflowY="auto"
+                fontFamily="mono"
+                fontSize="sm"
+                color="gray.700"
+                whiteSpace="pre-wrap"
+                lineHeight="1.6"
+                userSelect="text"
+              >
+                {diagramTextContent ?? (t?.ui?.loading || 'Cargando...')}
+              </Box>
+            ) : (
+              <Flex justifyContent="center">
+                <ChakraImage
+                  src={`/diagrams/${serviceData.diagram}`}
+                  alt={serviceData.title}
+                  maxWidth="600px"
+                  maxHeight="400px"
+                  objectFit="contain"
+                  border="1px solid"
+                  borderColor="gray.200"
+                  borderRadius="md"
+                  shadow="md"
+                  cursor="pointer"
+                  _hover={{ shadow: "lg", transform: "scale(1.02)" }}
+                  transition="all 0.2s"
+                  onClick={onOpen}
+                />
+              </Flex>
+            )}
           </Box>
         </CardBody>
       </Card>
@@ -1539,8 +1575,8 @@ const Analysis = () => {
         >{t?.ui?.save_all || 'Save All'}</button>
       </div>
 
-      {/* Modal to show image in full size */}
-      <Modal isOpen={isOpen} onClose={onClose} size="6xl" isCentered>
+      {/* Modal to show image in full size — only for image inputs */}
+      <Modal isOpen={isOpen && serviceData.diagram_input_type !== "text"} onClose={onClose} size="6xl" isCentered>
         <ModalOverlay bg="blackAlpha.800" />
         <ModalContent maxW="90vw" maxH="90vh" bg="transparent" boxShadow="none">
           <ModalCloseButton 

@@ -1,23 +1,24 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { 
-  Flex, 
-  Box, 
-  Input, 
-  Button, 
-  Heading, 
-  Text, 
-  Progress, 
+import {
+  Flex,
+  Box,
+  Input,
+  Button,
+  Heading,
+  Text,
+  Progress,
   Spinner,
   VStack,
+  HStack,
   Icon,
+  Textarea,
   useColorModeValue,
 } from "@chakra-ui/react";
-import { FiUpload, FiCheck, FiAlertCircle } from "react-icons/fi";
-import { uploadDiagram } from "../services";
-import { keyframes } from "@emotion/react"; // 👈 keyframes viene de Emotion
+import { FiUpload, FiCheck, FiAlertCircle, FiFileText, FiImage } from "react-icons/fi";
+import { uploadDiagram, uploadDiagramText } from "../services";
+import { keyframes } from "@emotion/react";
 
-// Animaciones personalizadas
 const bounce = keyframes`
   0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
   40% { transform: translateY(-10px); }
@@ -35,22 +36,42 @@ const fadeIn = keyframes`
   to { opacity: 1; transform: translateY(0); }
 `;
 
+const ACCEPTED_FILES =
+  "image/*,.pdf,.xml,.json,.md,.txt,.svg";
+
+const FILE_HINT =
+  "Formatos soportados: JPG, PNG, SVG, PDF, XML, JSON, TXT, MD";
+
 const UploadDiagram = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
+
+  // 'file' | 'text'
+  const [mode, setMode] = useState("file");
+
+  // file-mode state
   const [file, setFile] = useState(null);
+
+  // text-mode state
+  const [textContent, setTextContent] = useState("");
+
+  // shared upload state
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
-  const [uploadStatus, setUploadStatus] = useState(null); // 'success', 'warning', 'error', null
-  const [errorMessage, setErrorMessage] = useState(""); // Para mostrar mensajes específicos del backend
-  const navigate = useNavigate();
-  
+  const [uploadStatus, setUploadStatus] = useState(null); // 'success' | 'warning' | 'error' | null
+  const [errorMessage, setErrorMessage] = useState("");
+
+  const fileInputRef = useRef(null);
+
   const bgColor = useColorModeValue("white", "gray.800");
   const borderColor = useColorModeValue("gray.200", "gray.600");
+  const tabActiveBg = useColorModeValue("teal.50", "teal.900");
+  const tabInactiveBg = useColorModeValue("gray.50", "gray.700");
 
   const simulateProgress = () => {
     setUploadProgress(0);
     const interval = setInterval(() => {
-      setUploadProgress(prev => {
+      setUploadProgress((prev) => {
         if (prev >= 90) {
           clearInterval(interval);
           return 90;
@@ -63,66 +84,81 @@ const UploadDiagram = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!file) return;
-    
+
+    const readyFile = mode === "file" && file;
+    const readyText = mode === "text" && textContent.trim().length > 0;
+    if (!readyFile && !readyText) return;
+
     setIsUploading(true);
     setUploadStatus(null);
-    
+    setErrorMessage("");
+
     const progressInterval = simulateProgress();
-    
+
     try {
-      console.log("Enviando diagrama al servidor...");
-      const response = await uploadDiagram(id, file);
+      let response;
+      if (mode === "file") {
+        response = await uploadDiagram(id, file);
+      } else {
+        response = await uploadDiagramText(id, textContent.trim());
+      }
+
       clearInterval(progressInterval);
       setUploadProgress(100);
-      
-      console.log("Respuesta del servidor:", response.data);
-      console.log("¿La respuesta indica éxito?", response.data.success);
-      console.log("Mensaje de la respuesta:", response.data.message);
-      console.log("Datos del information_system:", response.data.information_system);
-      
+
       if (response.data.success) {
-        console.log("La respuesta indica ÉXITO - estableciendo estado a 'success'");
-        setUploadStatus('success');
-        
-        // Redirigir automáticamente al análisis después de un breve retraso
-        setTimeout(() => {
-          console.log("Redirigiendo al análisis de amenazas...");
-          navigate(`/analysis/${id}`);
-        }, 2000);
+        setUploadStatus("success");
+        setTimeout(() => navigate(`/analysis/${id}`), 2000);
       } else {
-        // Si no hay amenazas o hubo problemas, mostrar como warning y usar el mensaje del servidor
-        console.log("La respuesta indica FRACASO - estableciendo estado a 'warning'");
-        setUploadStatus('warning');
-        // Guardamos el mensaje específico del backend
-        setErrorMessage(response.data.message || "No se encontraron amenazas en el diagrama");
-        console.log("Mensaje de error establecido:", response.data.message);
+        setUploadStatus("warning");
+        setErrorMessage(
+          response.data.message || "No se encontraron amenazas en el contenido analizado"
+        );
       }
     } catch (error) {
       clearInterval(progressInterval);
-      setUploadStatus('error');
+      setUploadStatus("error");
       setIsUploading(false);
-      setErrorMessage(error.response?.data?.message || "Error al conectar con el servidor");
-      console.error("Error al subir el diagrama:", error);
+      setErrorMessage(
+        error.response?.data?.message || "Error al conectar con el servidor"
+      );
     }
   };
 
   const resetUpload = () => {
     setFile(null);
+    setTextContent("");
     setIsUploading(false);
     setUploadProgress(0);
     setUploadStatus(null);
     setErrorMessage("");
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
+  const isReady =
+    !isUploading &&
+    uploadStatus !== "success" &&
+    (mode === "file" ? !!file : textContent.trim().length > 0);
+
+  const progressLabel =
+    uploadProgress < 30
+      ? mode === "file"
+        ? "Procesando archivo..."
+        : "Procesando texto..."
+      : uploadProgress < 60
+      ? "Analizando contenido..."
+      : uploadProgress < 90
+      ? "Generando amenazas..."
+      : "Finalizando...";
+
   return (
-    <Flex align="center" justify="center" height="100vh" bg="gray.50" p={4}>
-      <Box 
-        p={8} 
-        borderWidth={1} 
-        borderRadius={16} 
-        boxShadow="2xl" 
-        width="500px"
+    <Flex align="center" justify="center" minHeight="100vh" bg="gray.50" p={4}>
+      <Box
+        p={8}
+        borderWidth={1}
+        borderRadius={16}
+        boxShadow="2xl"
+        width="520px"
         bg={bgColor}
         borderColor={borderColor}
         animation={`${fadeIn} 0.5s ease-out`}
@@ -133,7 +169,44 @@ const UploadDiagram = () => {
             Subir Diagrama de Amenazas
           </Heading>
 
-          {!isUploading && uploadStatus !== 'success' && (
+          {/* ── TABS ── */}
+          {!isUploading && uploadStatus !== "success" && (
+            <HStack width="100%" spacing={0} borderRadius={10} overflow="hidden" border="1px solid" borderColor="gray.200">
+              <Button
+                flex={1}
+                borderRadius={0}
+                leftIcon={<FiImage />}
+                bg={mode === "file" ? tabActiveBg : tabInactiveBg}
+                color={mode === "file" ? "teal.700" : "gray.500"}
+                fontWeight={mode === "file" ? "bold" : "normal"}
+                borderRight="1px solid"
+                borderColor="gray.200"
+                _hover={{ bg: tabActiveBg, color: "teal.700" }}
+                onClick={() => { setMode("file"); resetUpload(); }}
+                size="sm"
+                py={5}
+              >
+                Archivo / Imagen
+              </Button>
+              <Button
+                flex={1}
+                borderRadius={0}
+                leftIcon={<FiFileText />}
+                bg={mode === "text" ? tabActiveBg : tabInactiveBg}
+                color={mode === "text" ? "teal.700" : "gray.500"}
+                fontWeight={mode === "text" ? "bold" : "normal"}
+                _hover={{ bg: tabActiveBg, color: "teal.700" }}
+                onClick={() => { setMode("text"); resetUpload(); }}
+                size="sm"
+                py={5}
+              >
+                Descripción de Texto
+              </Button>
+            </HStack>
+          )}
+
+          {/* ── FILE MODE ── */}
+          {mode === "file" && !isUploading && uploadStatus !== "success" && (
             <Box
               p={6}
               border="2px dashed"
@@ -142,38 +215,65 @@ const UploadDiagram = () => {
               width="100%"
               textAlign="center"
               transition="all 0.3s"
-              _hover={{
-                borderColor: "teal.400",
-                transform: "scale(1.02)",
-              }}
+              _hover={{ borderColor: "teal.400", transform: "scale(1.02)" }}
               bg={file ? "teal.50" : "gray.50"}
             >
               <Input
+                ref={fileInputRef}
                 type="file"
-                accept="image/*"
-                onChange={e => setFile(e.target.files[0])}
-                required
+                accept={ACCEPTED_FILES}
+                onChange={(e) => setFile(e.target.files[0])}
                 display="none"
                 id="file-upload"
               />
-              <label htmlFor="file-upload" style={{ cursor: 'pointer', width: '100%', display: 'block' }}>
-                <Icon 
-                  as={FiUpload} 
-                  size="3em" 
-                  color={file ? "teal.500" : "gray.400"} 
+              <label htmlFor="file-upload" style={{ cursor: "pointer", width: "100%", display: "block" }}>
+                <Icon
+                  as={FiUpload}
+                  fontSize="3em"
+                  color={file ? "teal.500" : "gray.400"}
                   mb={3}
                   animation={file ? `${bounce} 1s infinite` : undefined}
                 />
                 <Text fontSize="lg" color={file ? "teal.600" : "gray.500"} mb={2}>
-                  {file ? file.name : "Haz clic aquí o arrastra tu diagrama"}
+                  {file ? file.name : "Haz clic aquí o arrastra tu archivo"}
                 </Text>
                 <Text fontSize="sm" color="gray.400">
-                  Formatos soportados: JPG, PNG, SVG
+                  {FILE_HINT}
                 </Text>
               </label>
             </Box>
           )}
 
+          {/* ── TEXT MODE ── */}
+          {mode === "text" && !isUploading && uploadStatus !== "success" && (
+            <Box width="100%">
+              <Text fontSize="sm" color="gray.500" mb={2}>
+                Describe la arquitectura del sistema, flujos de datos, componentes y conexiones.
+                Cuanto más detallado, mejor será el análisis de amenazas.
+              </Text>
+              <Textarea
+                placeholder={
+                  "Ejemplo:\n" +
+                  "El sistema tiene un cliente web que se conecta a una API REST. " +
+                  "La API autentica usuarios con JWT y accede a una base de datos PostgreSQL. " +
+                  "Los datos se transfieren mediante HTTPS. Existe un servicio de notificaciones por correo..."
+                }
+                value={textContent}
+                onChange={(e) => setTextContent(e.target.value)}
+                minH="200px"
+                borderColor={textContent.trim() ? "teal.300" : "gray.300"}
+                focusBorderColor="teal.400"
+                resize="vertical"
+                fontSize="sm"
+                bg={textContent.trim() ? "teal.50" : "gray.50"}
+              />
+              <Text fontSize="xs" color="gray.400" mt={1} textAlign="right">
+                {textContent.length} caracteres
+              </Text>
+            </Box>
+          )}
+
+          {/* ── UPLOADING STATE ── */}
           {isUploading && (
             <VStack spacing={4} width="100%" animation={`${fadeIn} 0.3s ease-out`}>
               <Box textAlign="center">
@@ -186,19 +286,15 @@ const UploadDiagram = () => {
                   animation={`${pulse} 2s infinite`}
                 />
                 <Text mt={4} fontSize="lg" color="teal.600" fontWeight="medium">
-                  {uploadProgress < 30 ? "Procesando imagen..." : 
-                   uploadProgress < 60 ? "Analizando diagrama..." :
-                   uploadProgress < 90 ? "Generando amenazas..." :
-                   "Finalizando..."}
+                  {progressLabel}
                 </Text>
               </Box>
-              
               <Box width="100%">
-                <Progress 
-                  value={uploadProgress} 
-                  colorScheme="teal" 
-                  size="lg" 
-                  hasStripe 
+                <Progress
+                  value={uploadProgress}
+                  colorScheme="teal"
+                  size="lg"
+                  hasStripe
                   isAnimated
                   borderRadius="full"
                 />
@@ -206,18 +302,18 @@ const UploadDiagram = () => {
                   {Math.round(uploadProgress)}% completado
                 </Text>
               </Box>
-              
               <Text fontSize="sm" color="gray.600" textAlign="center">
-                🤖 IA analizando tu diagrama para identificar posibles amenazas...
+                🤖 IA analizando el contenido para identificar posibles amenazas...
               </Text>
             </VStack>
           )}
 
-          {uploadStatus === 'success' && (
+          {/* ── SUCCESS STATE ── */}
+          {uploadStatus === "success" && (
             <VStack spacing={4} animation={`${fadeIn} 0.5s ease-out`}>
-              <Icon as={FiCheck} size="4em" color="green.500" animation={`${bounce} 0.6s ease-out`} />
+              <Icon as={FiCheck} fontSize="4em" color="green.500" animation={`${bounce} 0.6s ease-out`} />
               <Text fontSize="xl" color="green.600" fontWeight="bold" textAlign="center">
-                ¡Diagrama procesado exitosamente! 🎉
+                ¡Contenido procesado exitosamente! 🎉
               </Text>
               <Text fontSize="md" color="gray.600" textAlign="center">
                 Redirigiendo al análisis de amenazas...
@@ -226,30 +322,31 @@ const UploadDiagram = () => {
             </VStack>
           )}
 
-          {uploadStatus === 'warning' && (
+          {/* ── WARNING STATE ── */}
+          {uploadStatus === "warning" && (
             <VStack spacing={4} animation={`${fadeIn} 0.3s ease-out`}>
-              <Icon as={FiAlertCircle} size="3em" color="orange.500" />
+              <Icon as={FiAlertCircle} fontSize="3em" color="orange.500" />
               <Text fontSize="lg" color="orange.600" fontWeight="medium">
                 Aviso
               </Text>
               <Text fontSize="sm" color="gray.600" textAlign="center">
-                {errorMessage || "No se encontraron amenazas en el diagrama"}
+                {errorMessage || "No se encontraron amenazas en el contenido analizado"}
               </Text>
               <Button onClick={resetUpload} colorScheme="orange" variant="outline">
                 Intentar de nuevo
               </Button>
             </VStack>
           )}
-          
-          {uploadStatus === 'error' && (
+
+          {/* ── ERROR STATE ── */}
+          {uploadStatus === "error" && (
             <VStack spacing={4} animation={`${fadeIn} 0.3s ease-out`}>
-              <Icon as={FiAlertCircle} size="3em" color="red.500" />
+              <Icon as={FiAlertCircle} fontSize="3em" color="red.500" />
               <Text fontSize="lg" color="red.600" fontWeight="medium">
-                Error al procesar el diagrama
+                Error al procesar el contenido
               </Text>
               <Text fontSize="sm" color="gray.600" textAlign="center">
-                Se ha producido un error durante el procesamiento.
-                Por favor, verifica que la imagen sea válida e intenta nuevamente.
+                {errorMessage || "Se ha producido un error durante el procesamiento. Por favor intente nuevamente."}
               </Text>
               <Button onClick={resetUpload} colorScheme="red" variant="outline">
                 Intentar de nuevo
@@ -257,29 +354,27 @@ const UploadDiagram = () => {
             </VStack>
           )}
 
-          {file && !isUploading && uploadStatus !== 'success' && (
+          {/* ── SUBMIT / RESET BUTTONS ── */}
+          {isReady && (
             <VStack spacing={3} width="100%">
-              <Button 
-                onClick={handleSubmit} 
-                colorScheme="teal" 
-                size="lg" 
+              <Button
+                onClick={handleSubmit}
+                colorScheme="teal"
+                size="lg"
                 width="full"
                 leftIcon={<FiUpload />}
-                _hover={{
-                  transform: "translateY(-2px)",
-                  boxShadow: "lg"
-                }}
+                _hover={{ transform: "translateY(-2px)", boxShadow: "lg" }}
                 transition="all 0.2s"
               >
-                Analizar Diagrama
+                Analizar {mode === "file" ? "Archivo" : "Descripción"}
               </Button>
-              <Button 
-                onClick={resetUpload} 
-                variant="ghost" 
+              <Button
+                onClick={resetUpload}
+                variant="ghost"
                 size="sm"
                 color="gray.500"
               >
-                Seleccionar otro archivo
+                {mode === "file" ? "Seleccionar otro archivo" : "Limpiar texto"}
               </Button>
             </VStack>
           )}

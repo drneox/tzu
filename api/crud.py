@@ -269,9 +269,11 @@ def create_use_case(db: Session, use_case: schemas.UseCase):
     return db_use_case
 
 
-def attach_diagram(db: Session, information_system_id: str, image_path: str):
+def attach_diagram(db: Session, information_system_id: str, image_path: str, input_type: str = None):
     information_system = db.query(models.InformationSystem).filter(models.InformationSystem.id==UUID(information_system_id)).first()
     information_system.diagram = image_path
+    if input_type is not None:
+        information_system.diagram_input_type = input_type
     db.add(information_system)
     db.commit()
     db.refresh(information_system)

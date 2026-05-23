@@ -18,7 +18,7 @@ from datetime import datetime, timedelta
 from typing import List, Optional, Dict, Any
 
 # Third-party imports
-from fastapi import FastAPI, HTTPException, Depends, UploadFile, Body, status, Path, Query
+from fastapi import FastAPI, HTTPException, Depends, UploadFile, Body, Form, status, Path, Query
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
@@ -44,7 +44,7 @@ import utils
 import init_db
 import control_tags
 from tzu_ai import clientAI
-from utils import save_image
+from utils import process_file, save_text_content
 from stride_validator import normalize_stride_category, get_valid_stride_categories
 
 # =====================================================
@@ -459,105 +459,124 @@ async def create_information_system(
 @app.post(
     "/evaluate/{information_system_id}",
     tags=["Information Systems"],
-    summary="Evaluate System Diagram",
-    description="Upload and analyze a system diagram using AI threat detection"
+    summary="Evaluate System Diagram or Description",
+    description=(
+        "Upload and analyze a system diagram or textual description using AI threat detection. "
+        "Accepted file formats: PNG, JPG, JPEG, GIF, BMP, WebP (image analysis), "
+        "PDF, TXT, MD, XML, JSON, SVG (text extraction). "
+        "Alternatively, provide a plain-text description via the text_content field."
+    )
 )
 async def evaluate_system_diagram(
-    file: UploadFile,
     information_system_id: str = Path(..., description="Information system UUID"),
+    file: Optional[UploadFile] = None,
+    text_content: Optional[str] = Form(None, description="Plain-text architecture/diagram description"),
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_active_user)
 ):
     """
-    Upload and analyze a system diagram to automatically detect threats.
-    
+    Upload and analyze a system diagram or description to automatically detect threats.
+
+    Provide EITHER a file upload OR a text_content form field — not both simultaneously.
+
     Args:
-        file: Uploaded image file of the system diagram
         information_system_id: UUID of the target information system
+        file: Optional uploaded file (image, PDF, XML, JSON, TXT, MD, SVG)
+        text_content: Optional plain-text description of the system architecture
         db: Database session
         current_user: Current authenticated user
-        
+
     Returns:
         dict: Analysis results with success status and message
     """
     # Validate UUID format
     system_uuid = validate_uuid(information_system_id, "information system ID")
-    
+
     try:
-        # Save the image and get base64 encoding
-        image_b64, saved_filename = save_image(file)
-        
-        if not image_b64 or not saved_filename:
+        has_file = file is not None and file.filename
+        has_text = text_content is not None and text_content.strip()
+
+        if not has_file and not has_text:
             return {
-                "message": "Error processing image", 
+                "message": "Debe proporcionar un archivo o una descripción de texto para analizar",
                 "success": False
             }
-            
-        # Attach diagram to information system
+
+        if has_file:
+            try:
+                content, content_type, saved_filename = process_file(file)
+            except ValueError as e:
+                return {"message": str(e), "success": False}
+        else:
+            content, saved_filename = save_text_content(text_content.strip())
+            content_type = "text"
+
+        if not content or not saved_filename:
+            return {"message": "Error al procesar el contenido", "success": False}
+
+        # Attach diagram/file reference and input type to information system
         db_information_system = crud.attach_diagram(
-            db, 
-            information_system_id=str(system_uuid), 
-            image_path=saved_filename
+            db,
+            information_system_id=str(system_uuid),
+            image_path=saved_filename,
+            input_type=content_type
         )
-        
-        # Get AI analysis of the diagram
-        result = clientAI(image_b64)
-        
+
+        # Get AI analysis
+        result = clientAI(content, content_type)
+
         # Validate AI response format
         if isinstance(result, str):
             return {
                 "information_system": db_information_system,
-                "message": "Could not analyze diagram correctly", 
+                "message": "No se pudo analizar el contenido correctamente",
                 "success": False
             }
-        
+
         if not hasattr(result, 'threats') or not result.threats:
             return {
                 "information_system": db_information_system,
-                "message": "No threats found in diagram", 
+                "message": "No se encontraron amenazas en el contenido analizado",
                 "success": False
             }
-            
+
         # Process identified threats
         threats_created = 0
         for threat_data in result.threats:
-            # Normalize STRIDE category
             normalized_type = normalize_stride_category(threat_data.type)
             if not normalized_type:
-                normalized_type = 'Spoofing'  # Default fallback
-            
-            # Extract remediation data
+                normalized_type = 'Spoofing'
+
             if hasattr(threat_data.remediation, 'description'):
                 remediation_desc = threat_data.remediation.description
                 control_tags = getattr(threat_data.remediation, 'control_tags', [])
             else:
                 remediation_desc = str(threat_data.remediation)
                 control_tags = []
-            
-            # Create threat components
+
             remediation = crud.create_remediation(db, remediation_desc, control_tags)
             risk = crud.create_risk(db, threat_data.risk)
-            threat = crud.create_threat(
-                db, 
-                threat_data.title, 
-                threat_data.description, 
-                normalized_type, 
-                system_uuid, 
-                risk.id, 
+            crud.create_threat(
+                db,
+                threat_data.title,
+                threat_data.description,
+                normalized_type,
+                system_uuid,
+                risk.id,
                 remediation.id
             )
             threats_created += 1
-        
+
         return {
             "information_system": db_information_system,
-            "message": f"Diagram analyzed successfully and found {threats_created} threats",
+            "message": f"Contenido analizado exitosamente. Se encontraron {threats_created} amenazas",
             "success": True,
             "threats_found": threats_created
         }
-    
+
     except Exception as e:
         return {
-            "message": f"Error during processing: {str(e)}", 
+            "message": f"Error durante el procesamiento: {str(e)}",
             "success": False
         }
 
