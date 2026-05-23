@@ -45,9 +45,8 @@ cd tzu
 # Editar archivo .env para agregar tu clave API y zona horaria
 cp .env.example .env
 # Luego editar .env y configurar:
-# - Elegir UN proveedor de IA (no ambos):
-#   * OPENAI_API_KEY=tu_clave_openai_aqui OR
-#   * ANTHROPIC_API_KEY=tu_clave_anthropic_aqui
+# - Configurar la clave del proveedor de IA:
+#   * AI_API_KEY=tu_clave_api_aqui
 # - TZ=tu_zona_horaria (ej. America/New_York, Europe/London, America/Lima)
 
 # 3. Ejecutar el script de configuración automatizada

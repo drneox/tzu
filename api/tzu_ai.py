@@ -134,8 +134,17 @@ Use the following JSON output structure:
 """
     
     # Get AI response
+    ai_model = os.environ.get("AI_MODEL")
+    if not ai_model:
+      raise ValueError("AI_MODEL no está definido en las variables de entorno")
+    api_key = os.environ.get("AI_API_KEY")
+    if not api_key:
+      raise ValueError("AI_API_KEY no está definido en las variables de entorno")
+    api_base = os.environ.get("AI_API_BASE") or None
     response = completion(
-      model="openai/gpt-4o", # <provider_id>/<model_id>
+      model=ai_model, # <provider_id>/<model_id> — configured via AI_MODEL in .env
+      api_key=api_key,
+      api_base=api_base,
       messages=[
         {"role": "system", "content": "%s" % dynamic_prompt},
         {"role": "user", "content": [
