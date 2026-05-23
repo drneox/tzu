@@ -13,6 +13,7 @@ This module contains all the REST API endpoints organized by functional domains:
 
 import os
 import json
+import logging
 from uuid import UUID
 from datetime import datetime, timedelta
 from typing import List, Optional, Dict, Any
@@ -25,6 +26,8 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from pydantic import BaseModel
 from sqlalchemy.orm import Session, joinedload
 from jose import JWTError, jwt
+
+logger = logging.getLogger(__name__)
 
 # Configure timezone from environment variable
 if 'TZ' in os.environ:
@@ -556,8 +559,9 @@ async def evaluate_system_diagram(
         }
     
     except Exception as e:
+        logger.exception("Error during system diagram evaluation")
         return {
-            "message": f"Error during processing: {str(e)}", 
+            "message": "An internal error occurred during diagram processing.",
             "success": False
         }
 
