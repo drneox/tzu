@@ -212,8 +212,12 @@ def update_threat_risk(db: Session, threat_id: str, data: dict):
     for key in owasp_fields:
         if key in data and risk:
             if key == 'residual_risk':
-                print(f"Guardando riesgo residual: {data[key]}")
-            setattr(risk, key, data[key])
+                inherent_score = risk.overall_risk_score
+                clamped = min(float(data[key]), inherent_score) if data[key] is not None else None
+                print(f"Guardando riesgo residual: {data[key]} → {clamped} (inherente: {inherent_score})")
+                setattr(risk, key, clamped)
+            else:
+                setattr(risk, key, data[key])
     
     db.add(threat)
     if risk:

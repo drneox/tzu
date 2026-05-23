@@ -110,12 +110,18 @@ const Analysis = () => {
         risk = residualRisks[threatId];
         defaultValue = 1;
         break;
-      case 'current':
+      case 'current': {
         const threat = threats.find(t => t.id === threatId);
         const isRemediationApplied = threat?.remediation?.status === true;
-        return isRemediationApplied ? 
-          getRiskValue(threatId, 'residual') : 
-          getRiskValue(threatId, 'inherent');
+        if (isRemediationApplied) {
+          const residual = residualRisks[threatId];
+          // Si no hay residual definido, mostrar el inherente (no inventar un valor)
+          return (residual !== null && residual !== undefined)
+            ? getRiskValue(threatId, 'residual')
+            : getRiskValue(threatId, 'inherent');
+        }
+        return getRiskValue(threatId, 'inherent');
+      }
       default:
         risk = inherentRisks[threatId];
         defaultValue = 0;
@@ -382,14 +388,15 @@ const Analysis = () => {
         const inherentRiskValue = calculateInherentRisk(threat.risk);
         initialInherentRisks[threat.id] = parseFloat(inherentRiskValue.toFixed(1));
         
-        // Usar el valor guardado del backend si existe, sino usar riesgo inherente como inicial
+        // Usar el valor guardado del backend si existe y es menor o igual al inherente
         let residualRiskValue;
         if (threat.risk && threat.risk.residual_risk !== null && threat.risk.residual_risk !== undefined) {
-          // Usar el valor guardado del backend (asegurar 1 decimal)
-          residualRiskValue = parseFloat(parseFloat(threat.risk.residual_risk).toFixed(1));
+          const stored = parseFloat(parseFloat(threat.risk.residual_risk).toFixed(1));
+          // El residual nunca puede superar el inherente
+          residualRiskValue = Math.min(stored, parseFloat(inherentRiskValue.toFixed(1)));
         } else {
-          // Si no hay valor guardado, usar el riesgo inherente como valor inicial
-          residualRiskValue = parseFloat(inherentRiskValue.toFixed(1));
+          // Sin valor guardado: dejar null para no mostrar un residual igual al inherente
+          residualRiskValue = null;
         }
         
         initialResidualRisks[threat.id] = residualRiskValue;
