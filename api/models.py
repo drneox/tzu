@@ -145,6 +145,7 @@ class Remediation(Base):
     # Tags flexibles para controles de seguridad (JSON array de strings)
     # Ejemplos: ["ASVS-V2.1.1", "MASVS-MSTG-AUTH-1", "SBS-Circular-G-140-2009", "ISO27001-A.9.1.1"]
     control_tags = Column(Text)  # JSON string array
+    created_by = Column(UUID, ForeignKey("users.id"), nullable=True)
     
     @hybrid_property
     def control_tags_list(self):
@@ -174,6 +175,7 @@ class Threat(Base):
     information_system_id = Column(UUID,ForeignKey("information_systems.id")) 
     remediation_id = Column(UUID,ForeignKey("remediations.id"))  
     risk_id = Column(UUID,ForeignKey("risks.id"))  
+    created_by = Column(UUID, ForeignKey("users.id"), nullable=True)
     information_system = relationship("InformationSystem", back_populates="threats")
     remediation = relationship("Remediation")
     risk = relationship("Risk")
@@ -200,8 +202,8 @@ class InformationSystem(Base):
     description = Column(Text)
     datetime = Column(DateTime, default=datetime.datetime.utcnow)
     diagram = Column(Text)
-    # "image" | "text" — tracks whether the last analysis input was a file/image or plain text
-    diagram_input_type = Column(String, nullable=True)
+    created_by = Column(UUID, ForeignKey("users.id"), nullable=True)
+
     threats = relationship("Threat", back_populates="information_system", cascade="all, delete-orphan")
 
 
@@ -225,4 +227,15 @@ class User(Base):
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     is_active = Column(Boolean, default=True)
     is_admin = Column(Boolean, default=False)
+    role = Column(String, default="reader")
+
+
+class AuditLog(Base):
+    __tablename__ = "audit_logs"
+    id = Column(UUID, primary_key=True, default=uuid.uuid4)
+    action = Column(String, nullable=False)
+    target_user_id = Column(UUID, ForeignKey("users.id"), nullable=True)
+    performed_by_id = Column(UUID, ForeignKey("users.id"), nullable=False)
+    timestamp = Column(DateTime, default=datetime.datetime.utcnow)
+    detail = Column(Text, nullable=True)
 

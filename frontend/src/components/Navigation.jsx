@@ -1,27 +1,47 @@
 import React from "react";
 import { Flex } from "@chakra-ui/react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { useLocalization } from '../hooks/useLocalization';
-import { navBarStyle, navLinkStyle } from '../styles/HeaderStyles';
+import { navBarStyle } from '../styles/HeaderStyles';
+import { useAuth } from '../context/AuthContext';
 
-/**
- * Componente Navigation
- * Barra de navegación principal de la aplicación
- */
+const NavLink = ({ to, children, exact }) => {
+  const { pathname } = useLocation();
+  const isActive = exact ? pathname === to : pathname.startsWith(to);
+
+  return (
+    <Link
+      to={to}
+      style={{
+        textDecoration: 'none',
+        color: isActive ? '#00243c' : '#ffa833',
+        fontSize: '0.875rem',
+        fontWeight: isActive ? '700' : '500',
+        padding: '5px 14px',
+        borderRadius: '20px',
+        background: isActive ? '#ffa833' : 'transparent',
+        opacity: isActive ? 1 : 0.75,
+        transition: 'all 0.15s',
+        whiteSpace: 'nowrap',
+      }}
+      onMouseEnter={e => { if (!isActive) { e.currentTarget.style.opacity = 1; e.currentTarget.style.background = 'rgba(255,168,51,0.12)'; } }}
+      onMouseLeave={e => { if (!isActive) { e.currentTarget.style.opacity = 0.75; e.currentTarget.style.background = 'transparent'; } }}
+    >
+      {children}
+    </Link>
+  );
+};
+
 const Navigation = () => {
   const { t } = useLocalization();
+  const { isAdmin } = useAuth();
 
   return (
     <Flex {...navBarStyle}>
-      <Link to="/create" style={navLinkStyle}>
-        <h3>{t.ui.menu.new_analysis}</h3>
-      </Link>
-      <Link to="/" style={navLinkStyle}>
-        <h3>{t.ui.menu.archive}</h3>
-      </Link>
-      <Link to="/reports" style={navLinkStyle}>
-        <h3>{t.ui.menu.reports}</h3>
-      </Link>
+      <NavLink to="/create">{t.ui.menu.new_analysis}</NavLink>
+      <NavLink to="/" exact>{t.ui.menu.archive}</NavLink>
+      <NavLink to="/reports">{t.ui.menu.reports}</NavLink>
+      {isAdmin && <NavLink to="/users">{t.ui.menu.users}</NavLink>}
     </Flex>
   );
 };

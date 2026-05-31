@@ -86,11 +86,65 @@ def test_user(db_session):
     return user
 
 @pytest.fixture(scope="function")
+def admin_user(db_session):
+    """Create an admin test user"""
+    from crud import create_user
+    from schemas import UserCreate
+
+    user_data = UserCreate(
+        username="adminuser",
+        email="admin@example.com",
+        name="Admin User",
+        password="adminpassword123",
+        role="admin"
+    )
+    user = create_user(db=db_session, user=user_data)
+    return user
+
+@pytest.fixture(scope="function")
 def auth_headers(test_user):
     """Create authentication headers with valid token"""
     login_data = {
         "username": test_user.username,
         "password": "testpassword123"
+    }
+    response = client.post("/token", data=login_data)
+    token = response.json()["access_token"]
+    return {"Authorization": f"Bearer {token}"}
+
+@pytest.fixture(scope="function")
+def admin_auth_headers(admin_user):
+    """Create authentication headers for an admin user"""
+    login_data = {
+        "username": admin_user.username,
+        "password": "adminpassword123"
+    }
+    response = client.post("/token", data=login_data)
+    token = response.json()["access_token"]
+    return {"Authorization": f"Bearer {token}"}
+
+@pytest.fixture(scope="function")
+def analyst_user(db_session):
+    """Create an analyst test user"""
+    from crud import create_user
+    from schemas import UserCreate
+
+    user_data = UserCreate(
+        username="analystuser",
+        email="analyst@example.com",
+        name="Analyst User",
+        password="analystpassword123",
+        role="analyst"
+    )
+    user = create_user(db=db_session, user=user_data)
+    return user
+
+@pytest.fixture(scope="function")
+def analyst_auth_headers(analyst_user):
+    """Create authentication headers for an analyst user"""
+    login_data = {
+        "username": analyst_user.username,
+        "password": "analystpassword123"
     }
     response = client.post("/token", data=login_data)
     token = response.json()["access_token"]

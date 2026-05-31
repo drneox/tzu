@@ -89,7 +89,7 @@ import os
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
-ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "1440"))  # Default 24 hours (Decision 6)
 
 # Authentication functions
 def verify_password(plain_password, hashed_password):
@@ -104,19 +104,143 @@ def get_user(db: Session, user_id: int):
 def get_user_by_username(db: Session, username: str):
     return db.query(models.User).filter(models.User.username == username).first()
 
-def create_user(db: Session, user: schemas.UserCreate, is_admin: bool = False):
+def list_users(db: Session, skip: int = 0, limit: int = 100, role: str = None, is_active: bool = None):
+    query = db.query(models.User)
+    if role is not None:
+        query = query.filter(models.User.role == role)
+    if is_active is not None:
+        query = query.filter(models.User.is_active == is_active)
+    return query.offset(skip).limit(limit).all()
+
+def _count_active_admins(db: Session) -> int:
+    return db.query(models.User).filter(
+        models.User.role == "admin",
+        models.User.is_active == True
+    ).count()
+
+def update_user_role(db: Session, user_id: str, new_role: str, performed_by_id: str = None):
+    user = db.query(models.User).filter(models.User.id == UUID(str(user_id))).first()
+    if not user:
+        return None, "User not found"
+    # RB-001: cannot demote the last active admin
+    if user.role == "admin" and new_role != "admin":
+        if _count_active_admins(db) <= 1:
+            return None, "Cannot demote the last active admin"
+    old_role = user.role
+    user.role = new_role
+    # Keep is_admin in sync
+    user.is_admin = (new_role == "admin")
+    db.commit()
+    db.refresh(user)
+    if performed_by_id:
+        create_audit_log_entry(
+            db,
+            action="update_user_role",
+            target_user_id=str(user.id),
+            performed_by_id=str(performed_by_id),
+            detail=f"Changed role of '{user.username}' from '{old_role}' to '{new_role}'"
+        )
+    return user, None
+
+def update_user_active(db: Session, user_id: str, is_active: bool, performed_by_id: str = None):
+    user = db.query(models.User).filter(models.User.id == UUID(str(user_id))).first()
+    if not user:
+        return None, "User not found"
+    # RB-002: cannot deactivate the last active admin
+    if user.role == "admin" and not is_active:
+        if _count_active_admins(db) <= 1:
+            return None, "Cannot deactivate the last active admin"
+    user.is_active = is_active
+    db.commit()
+    db.refresh(user)
+    if performed_by_id:
+        create_audit_log_entry(
+            db,
+            action="update_user_active",
+            target_user_id=str(user.id),
+            performed_by_id=str(performed_by_id),
+            detail=f"Set is_active={is_active} for user '{user.username}'"
+        )
+    return user, None
+
+def delete_user(db: Session, user_id: str):
+    user = db.query(models.User).filter(models.User.id == UUID(str(user_id))).first()
+    if not user:
+        return None, "User not found"
+    # RB-003: cannot delete the last active admin
+    if user.role == "admin" and user.is_active:
+        if _count_active_admins(db) <= 1:
+            return False, "Cannot delete the last active admin"
+    db.delete(user)
+    db.commit()
+    return True, None
+
+
+def check_delete_permission(resource, current_user: models.User) -> bool:
+    """
+    Check if current_user can delete the given resource (RB-006, Decision 8).
+    - Admin can always delete.
+    - Analyst can delete only resources they created (created_by == current_user.id).
+    Returns True if allowed, False otherwise.
+    """
+    if current_user.role == "admin":
+        return True
+    if current_user.role == "analyst":
+        if resource.created_by is None:
+            return False
+        return str(resource.created_by) == str(current_user.id)
+    return False
+
+
+def create_audit_log_entry(db: Session, action: str, performed_by_id: str, target_user_id: str = None, detail: str = None):
+    """Create an audit log entry for administrative actions (FR-011)."""
+    import datetime as dt
+    import uuid as _uuid
+    entry = models.AuditLog(
+        action=action,
+        target_user_id=_uuid.UUID(str(target_user_id)) if target_user_id else None,
+        performed_by_id=_uuid.UUID(str(performed_by_id)),
+        timestamp=dt.datetime.utcnow(),
+        detail=detail
+    )
+    db.add(entry)
+    db.commit()
+    return entry
+
+
+def list_audit_log(db: Session, skip: int = 0, limit: int = 100, action: str = None, target_user_id: str = None):
+    """List audit log entries with optional filters."""
+    query = db.query(models.AuditLog)
+    if action:
+        query = query.filter(models.AuditLog.action == action)
+    if target_user_id:
+        query = query.filter(models.AuditLog.target_user_id == target_user_id)
+    return query.order_by(models.AuditLog.timestamp.desc()).offset(skip).limit(limit).all()
+
+
+def create_user(db: Session, user: schemas.UserCreate, is_admin: bool = False, performed_by_id=None):
     hashed_password = get_password_hash(user.password)
+    role = user.role if hasattr(user, 'role') and user.role else ("admin" if is_admin else "reader")
     db_user = models.User(
         username=user.username,
         email=user.email,
         name=user.name,
         password_hash=hashed_password,
         is_active=True,
-        is_admin=is_admin
+        is_admin=(role == "admin"),
+        role=role
     )
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
+    if performed_by_id:
+        create_audit_log_entry(
+            db,
+            action="create_user",
+            target_user_id=str(db_user.id),
+            performed_by_id=str(performed_by_id),
+            detail=f"Created user '{db_user.username}' with role '{role}'"
+        )
     return db_user
 
 def authenticate_user(db: Session, username: str, password: str):
@@ -247,9 +371,10 @@ def get_threats_by_information_system(db: Session, information_system_id: str):
         joinedload(models.Threat.remediation)
     ).filter(models.Threat.information_system_id == UUID(information_system_id)).order_by(models.Threat.created_at.desc()).all()
  
-def create_information_system(db: Session, information_system: schemas.InformationSystem):
+def create_information_system(db: Session, information_system: schemas.InformationSystem, created_by=None):
     db_information_system = models.InformationSystem(title=information_system.title,
-                                                    description=information_system.description
+                                                    description=information_system.description,
+                                                    created_by=created_by
                                                     )
     
     db.add(db_information_system)
@@ -279,7 +404,7 @@ def attach_diagram(db: Session, information_system_id: str, image_path: str, inp
     db.refresh(information_system)
     return information_system
 
-def create_threat(db: Session, title:str, description:str, type:str, information_system_id: str, risk_id:str, remediation_id:str):
+def create_threat(db: Session, title:str, description:str, type:str, information_system_id: str, risk_id:str, remediation_id:str, created_by=None):
     threat = models.Threat(
         information_system_id=information_system_id,
         remediation_id= remediation_id,
@@ -287,6 +412,7 @@ def create_threat(db: Session, title:str, description:str, type:str, information
         description=description,
         title=title,
         type=type,
+        created_by=created_by,
         )
     db.add(threat)
     db.commit()
@@ -322,14 +448,15 @@ def create_risk(db: Session, risk: schemas.Risk):
     return risk_model
 
 
-def create_remediation(db: Session, description: str, control_tags: list = None):
+def create_remediation(db: Session, description: str, control_tags: list = None, created_by=None):
     # Convertir lista de control_tags a JSON string
     control_tags_json = json.dumps(control_tags) if control_tags else "[]"
     
     remediation = models.Remediation(
         description=description,
         status=False,
-        control_tags=control_tags_json
+        control_tags=control_tags_json,
+        created_by=created_by
     )
     db.add(remediation)
     db.commit()

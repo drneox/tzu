@@ -32,6 +32,7 @@ import Analysis from './components/Analysis';
 import Reports from './components/Reports';
 import CreateInformationSystem from './components/CreateInformationSystem';
 import UploadDiagram from './components/UploadDiagram';
+import UserManagement from './components/UserManagement';
 
 // Componente AppContent - Contenido principal de la aplicación
 function AppContent() {
@@ -127,6 +128,15 @@ function AppContent() {
                 <UploadDiagram />
               </ProtectedRoute>
             } 
+          />
+
+          <Route
+            path="/users"
+            element={
+              <ProtectedRoute>
+                <UserManagement />
+              </ProtectedRoute>
+            }
           />
           
           {/* Redirección por defecto */}

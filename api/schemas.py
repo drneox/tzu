@@ -1,5 +1,5 @@
 from typing import Optional
-from typing import List, Optional
+from typing import List, Optional, Literal
 from uuid import UUID
 from pydantic import BaseModel, FilePath, field_validator, Field
 from datetime import datetime
@@ -144,6 +144,7 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     password: str
+    role: Literal["admin", "analyst", "reader"] = "reader"
 
 
 # For partial user update (for example, password only)
@@ -161,6 +162,15 @@ class User(UserBase):
     created_at: datetime
     is_active: bool = True
     is_admin: bool = False
+    role: str = "reader"
+
+
+class UserRoleUpdate(BaseModel):
+    role: Literal["admin", "analyst", "reader"]
+
+
+class UserActiveUpdate(BaseModel):
+    is_active: bool
 
 
 class Token(BaseModel):
@@ -174,4 +184,15 @@ class TokenData(BaseModel):
 
 class UserLogin(BaseModel):
     username: str
+
+
+class AuditLogEntry(BaseModel):
+    model_config = {"from_attributes": True}
+
+    id: UUID
+    action: str
+    target_user_id: Optional[UUID] = None
+    performed_by_id: UUID
+    timestamp: datetime
+    detail: Optional[str] = None
     password: str

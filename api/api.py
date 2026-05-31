@@ -198,6 +198,28 @@ async def get_current_active_user(
         raise HTTPException(status_code=400, detail="Inactive user")
     return current_user
 
+async def require_analyst_user(
+    current_user: models.User = Depends(get_current_active_user)
+) -> models.User:
+    """Require role 'analyst' or 'admin'."""
+    if current_user.role not in ("admin", "analyst"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Insufficient permissions. Analyst or Admin role required."
+        )
+    return current_user
+
+async def require_admin_user(
+    current_user: models.User = Depends(get_current_active_user)
+) -> models.User:
+    """Require role 'admin'."""
+    if current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Insufficient permissions. Admin role required."
+        )
+    return current_user
+
 # =====================================================
 # UTILITY MODELS & FUNCTIONS
 # =====================================================
@@ -310,18 +332,20 @@ async def login_for_access_token(
     response_model=schemas.User, 
     tags=["Users"],
     summary="Create User",
-    description="Register a new user account"
+    description="Register a new user account (admin only)"
 )
 def create_user(
     user: schemas.UserCreate, 
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_admin_user)
 ):
     """
-    Create a new user account.
+    Create a new user account. Requires admin role.
     
     Args:
         user: User creation data
         db: Database session
+        current_user: Current authenticated admin user
         
     Returns:
         schemas.User: Created user information
@@ -335,7 +359,24 @@ def create_user(
             status_code=400, 
             detail="Username is already registered"
         )
-    return crud.create_user(db=db, user=user)
+    return crud.create_user(db=db, user=user, performed_by_id=current_user.id)
+
+@app.get(
+    "/users",
+    response_model=List[schemas.User],
+    tags=["Users"],
+    summary="List Users",
+    description="List all users with optional filtering (admin only)"
+)
+async def list_users(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=1000),
+    role: Optional[str] = Query(None, description="Filter by role: admin, analyst, reader"),
+    is_active: Optional[bool] = Query(None, description="Filter by active status"),
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_admin_user)
+):
+    return crud.list_users(db, skip=skip, limit=limit, role=role, is_active=is_active)
 
 @app.get(
     "/users/me", 
@@ -357,6 +398,99 @@ async def read_users_me(
         schemas.User: Current user information
     """
     return current_user
+
+@app.get(
+    "/users/{user_id}",
+    response_model=schemas.User,
+    tags=["Users"],
+    summary="Get User",
+    description="Get a specific user by ID (admin only)"
+)
+async def get_user(
+    user_id: str = Path(..., description="User UUID"),
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_admin_user)
+):
+    user_uuid = validate_uuid(user_id, "user ID")
+    user = db.query(models.User).filter(models.User.id == user_uuid).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user
+
+@app.put(
+    "/users/{user_id}/role",
+    response_model=schemas.User,
+    tags=["Users"],
+    summary="Update User Role",
+    description="Update the role of a user (admin only)"
+)
+async def update_user_role(
+    user_id: str = Path(..., description="User UUID"),
+    role_update: schemas.UserRoleUpdate = ...,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_admin_user)
+):
+    user_uuid = validate_uuid(user_id, "user ID")
+    user, error = crud.update_user_role(db, str(user_uuid), role_update.role, performed_by_id=str(current_user.id))
+    if error:
+        status_code = 404 if error == "User not found" else 400
+        raise HTTPException(status_code=status_code, detail=error)
+    return user
+
+@app.put(
+    "/users/{user_id}/active",
+    response_model=schemas.User,
+    tags=["Users"],
+    summary="Update User Active Status",
+    description="Activate or deactivate a user account (admin only)"
+)
+async def update_user_active(
+    user_id: str = Path(..., description="User UUID"),
+    active_update: schemas.UserActiveUpdate = ...,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_admin_user)
+):
+    user_uuid = validate_uuid(user_id, "user ID")
+    user, error = crud.update_user_active(db, str(user_uuid), active_update.is_active, performed_by_id=str(current_user.id))
+    if error:
+        status_code = 404 if error == "User not found" else 400
+        raise HTTPException(status_code=status_code, detail=error)
+    return user
+
+@app.delete(
+    "/users/{user_id}",
+    tags=["Users"],
+    summary="Delete User",
+    description="Delete a user account (admin only)"
+)
+async def delete_user(
+    user_id: str = Path(..., description="User UUID"),
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_admin_user)
+):
+    user_uuid = validate_uuid(user_id, "user ID")
+    success, error = crud.delete_user(db, str(user_uuid))
+    if error:
+        status_code = 404 if error == "User not found" else 400
+        raise HTTPException(status_code=status_code, detail=error)
+    return {"message": "User deleted successfully"}
+
+@app.get(
+    "/admin/audit-log",
+    response_model=List[schemas.AuditLogEntry],
+    tags=["Users"],
+    summary="Get Audit Log",
+    description="Retrieve administrative audit log entries (admin only)"
+)
+async def get_audit_log(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=1000),
+    action: Optional[str] = Query(None, description="Filter by action type"),
+    target_user_id: Optional[str] = Query(None, description="Filter by target user UUID"),
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_admin_user)
+):
+    return crud.list_audit_log(db, skip=skip, limit=limit, action=action, target_user_id=target_user_id)
 
 # =====================================================
 # INFORMATION SYSTEMS MANAGEMENT ENDPOINTS
@@ -440,7 +574,7 @@ async def read_information_system(
 async def create_information_system(
     information_system: schemas.InformationSystemBaseCreate, 
     db: Session = Depends(get_db), 
-    current_user: models.User = Depends(get_current_active_user)
+    current_user: models.User = Depends(require_analyst_user)
 ):
     """
     Create a new information system.
@@ -455,7 +589,8 @@ async def create_information_system(
     """
     db_information_system = crud.create_information_system(
         db, 
-        information_system=information_system
+        information_system=information_system,
+        created_by=current_user.id
     )
     return db_information_system
 
@@ -475,7 +610,7 @@ async def evaluate_system_diagram(
     file: Optional[UploadFile] = None,
     text_content: Optional[str] = Form(None, description="Plain-text architecture/diagram description"),
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_active_user)
+    current_user: models.User = Depends(require_analyst_user)
 ):
     """
     Upload and analyze a system diagram or description to automatically detect threats.
@@ -556,17 +691,19 @@ async def evaluate_system_diagram(
             else:
                 remediation_desc = str(threat_data.remediation)
                 control_tags = []
-
-            remediation = crud.create_remediation(db, remediation_desc, control_tags)
+            
+            # Create threat components
+            remediation = crud.create_remediation(db, remediation_desc, control_tags, created_by=current_user.id)
             risk = crud.create_risk(db, threat_data.risk)
-            crud.create_threat(
-                db,
-                threat_data.title,
-                threat_data.description,
-                normalized_type,
-                system_uuid,
-                risk.id,
-                remediation.id
+            threat = crud.create_threat(
+                db, 
+                threat_data.title, 
+                threat_data.description, 
+                normalized_type, 
+                system_uuid, 
+                risk.id, 
+                remediation.id,
+                created_by=current_user.id
             )
             threats_created += 1
 
@@ -621,6 +758,28 @@ async def get_threats_by_system(
     
     return threats
 
+@app.delete(
+    "/information_systems/{information_system_id}",
+    tags=["Information Systems"],
+    summary="Delete Information System",
+    description="Delete an information system (owner or admin only)"
+)
+async def delete_information_system(
+    information_system_id: str = Path(..., description="Information system UUID"),
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_analyst_user)
+):
+    """Delete an information system. Analyst can only delete systems they created; admin can delete any."""
+    system_uuid = validate_uuid(information_system_id, "information system ID")
+    system = db.query(models.InformationSystem).filter(models.InformationSystem.id == system_uuid).first()
+    if not system:
+        raise HTTPException(status_code=404, detail="Information system not found")
+    if not crud.check_delete_permission(system, current_user):
+        raise HTTPException(status_code=403, detail="You can only delete information systems you created")
+    db.delete(system)
+    db.commit()
+    return {"message": "Information system deleted successfully"}
+
 @app.get(
     "/threat/{threat_id}", 
     response_model=schemas.Threat,
@@ -667,7 +826,7 @@ async def create_manual_threat(
     information_system_id: str = Path(..., description="Information system UUID"),
     threat_data: Dict[str, Any] = Body(..., description="Threat creation data"),
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_active_user)
+    current_user: models.User = Depends(require_analyst_user)
 ):
     """
     Manually create a new threat for an information system.
@@ -713,7 +872,8 @@ async def create_manual_threat(
     remediation = crud.create_remediation(
         db,
         threat_data.get('remediation', {}).get('description', 'No remediation defined'),
-        threat_data.get('remediation', {}).get('control_tags', [])
+        threat_data.get('remediation', {}).get('control_tags', []),
+        created_by=current_user.id
     )
     
     # Normalize STRIDE category
@@ -730,7 +890,8 @@ async def create_manual_threat(
         type=normalized_type,
         information_system_id=system_uuid,
         risk_id=risk.id,
-        remediation_id=remediation.id
+        remediation_id=remediation.id,
+        created_by=current_user.id
     )
     
     # Return threat with eager-loaded relationships
@@ -745,34 +906,25 @@ async def create_manual_threat(
     "/threat/{threat_id}",
     tags=["Threats"],
     summary="Delete Threat",
-    description="Delete a specific threat and its associated risk and remediation"
+    description="Delete a specific threat (owner or admin only)"
 )
 async def delete_threat(
     threat_id: str = Path(..., description="Threat UUID"),
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_active_user)
+    current_user: models.User = Depends(require_analyst_user)
 ):
     """
-    Delete a specific threat and its associated data.
-    
-    Args:
-        threat_id: UUID of the threat to delete
-        db: Database session
-        current_user: Current authenticated user
-        
-    Returns:
-        dict: Success message
-        
-    Raises:
-        HTTPException: 404 if threat not found
+    Delete a specific threat. Analyst can only delete threats they created; admin can delete any.
     """
-    # Validate UUID format
     uuid_id = validate_uuid(threat_id, "threat ID")
-    
+    threat = db.query(models.Threat).filter(models.Threat.id == uuid_id).first()
+    if not threat:
+        raise HTTPException(status_code=404, detail="Threat not found")
+    if not crud.check_delete_permission(threat, current_user):
+        raise HTTPException(status_code=403, detail="You can only delete threats you created")
     deleted = crud.delete_threat(db, str(uuid_id))
     if not deleted:
         raise HTTPException(status_code=404, detail="Threat not found")
-    
     return {"message": "Threat deleted successfully"}
 
 @app.put(
@@ -786,7 +938,7 @@ async def update_threat_risk(
     threat_id: str = Path(..., description="Threat UUID"),
     risk_data: Dict[str, Any] = Body(..., description="Risk assessment data"),
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_active_user)
+    current_user: models.User = Depends(require_analyst_user)
 ):
     """
     Update risk assessment for a specific threat.
@@ -795,7 +947,7 @@ async def update_threat_risk(
         threat_id: UUID of the threat
         risk_data: Updated risk assessment values
         db: Database session
-        current_user: Current authenticated user
+        current_user: Current authenticated analyst/admin user
         
     Returns:
         schemas.Threat: Updated threat with new risk assessment
@@ -820,7 +972,7 @@ async def update_threats_risk_by_system(
     information_system_id: str = Path(..., description="Information system UUID"),
     threats_data: List[Dict[str, Any]] = Body(..., description="List of threat updates"),
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_active_user)
+    current_user: models.User = Depends(require_analyst_user)
 ):
     """
     Update risk assessments for multiple threats in a single operation.
@@ -829,7 +981,7 @@ async def update_threats_risk_by_system(
         information_system_id: UUID of the information system
         threats_data: List of threat update objects with threat_id and new values
         db: Database session
-        current_user: Current authenticated user
+        current_user: Current authenticated analyst/admin user
         
     Returns:
         List[schemas.Threat]: List of updated threats
@@ -1459,7 +1611,7 @@ async def update_remediation(
     remediation_id: str = Path(..., description="Remediation UUID"),
     remediation_data: Dict[str, Any] = Body(..., description="Updated remediation data"),
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_active_user)
+    current_user: models.User = Depends(require_analyst_user)
 ):
     """
     Update remediation information including description, status, and control tags.
@@ -1497,6 +1649,28 @@ async def update_remediation(
         "message": "Remediation updated successfully",
         "remediation_id": str(uuid_id)
     }
+
+@app.delete(
+    "/remediations/{remediation_id}",
+    tags=["Remediations"],
+    summary="Delete Remediation",
+    description="Delete a remediation (owner or admin only)"
+)
+async def delete_remediation(
+    remediation_id: str = Path(..., description="Remediation UUID"),
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_analyst_user)
+):
+    """Delete a remediation. Analyst can only delete remediations they created; admin can delete any."""
+    uuid_id = validate_uuid(remediation_id, "remediation ID")
+    remediation = db.query(models.Remediation).filter(models.Remediation.id == uuid_id).first()
+    if not remediation:
+        raise HTTPException(status_code=404, detail="Remediation not found")
+    if not crud.check_delete_permission(remediation, current_user):
+        raise HTTPException(status_code=403, detail="You can only delete remediations you created")
+    db.delete(remediation)
+    db.commit()
+    return {"message": "Remediation deleted successfully"}
 
 # =====================================================
 # ERROR HANDLERS & MIDDLEWARE

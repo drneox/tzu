@@ -49,7 +49,8 @@ def create_default_user(db: Session):
                 username="admin",
                 password=password,
                 name="Administrator",
-                email="admin@example.com"
+                email="admin@example.com",
+                role="admin"
             )
             
             # Create user using existing function

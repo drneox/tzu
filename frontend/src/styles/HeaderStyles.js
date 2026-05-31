@@ -1,32 +1,36 @@
-/**
- * Estilos para el componente Header
- * 
- * Este archivo contiene todos los estilos utilizados en el componente Header,
- * siguiendo las buenas prácticas de separación de concerns en React.
- */
-
-// Estilo para el contenedor principal del encabezado
+// Contenedor principal del header — una sola fila horizontal
 export const headerContainer = {
+  as: "header",
+  align: "center",
+  px: "1.25rem",
+  h: "64px",
+  bg: "#00243c",
+  color: "#ffa833",
+  boxShadow: "0 1px 0 rgba(255,168,51,0.15)"
+};
+
+// Fila única que distribuye logo | nav | controles
+export const contentContainer = {
+  direction: "row",
+  align: "center",
+  justify: "space-between",
+  width: "100%",
+  gap: 6
+};
+
+// Bloque logo + nombre
+export const topRowContainer = {
+  alignItems: "center",
+  gap: "10px",
+  flexShrink: 0
+};
+
+// Barra de nav links
+export const navBarStyle = {
   as: "nav",
   align: "center",
-  wrap: "wrap",
-  padding: "0.5rem",
-  bg: "#00243c",
-  color: "#ffa833"
-};
-
-// Estilo para el contenedor de contenido del encabezado
-export const contentContainer = {
-  direction: "column", 
-  align: "left", 
-  width: "100%"
-};
-
-// Estilo para la fila superior que contiene el logo y el área de usuario
-export const topRowContainer = {
-  alignItems: "center", 
-  justifyContent: "space-between", 
-  width: "100%"
+  gap: 1,
+  flex: 1
 };
 
 // Estilo para el botón del menú de usuario
@@ -50,15 +54,8 @@ export const logoutMenuItemStyle = {
   _hover: { bg: "red.50" }
 };
 
-// Estilo para la barra de navegación inferior
-export const navBarStyle = {
-  width: "300px",
-  justifyContent: "space-between",
-  mt: 4
-};
-
-// Estilo para los enlaces de navegación
+// navLinkStyle ya no se usa directamente (Navigation usa estilos inline con estado activo)
 export const navLinkStyle = {
-  textDecoration: 'none', 
+  textDecoration: 'none',
   color: '#ffa833'
 };

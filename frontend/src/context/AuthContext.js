@@ -65,7 +65,10 @@ export const AuthProvider = ({ children }) => {
     setUser,
     login,
     logout,
-    isLoading
+    isLoading,
+    role: user?.role ?? null,
+    isAdmin: user?.role === 'admin',
+    canWrite: ['admin', 'analyst'].includes(user?.role)
   };
 
   return (

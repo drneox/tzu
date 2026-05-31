@@ -9,8 +9,8 @@ RUN npm install
 # Copy source code
 COPY . .
 
-# Build the app
-RUN npm run build
+# Build the app (inyecta versión desde package.json)
+RUN REACT_APP_VERSION=$(node -p "require('./package.json').version") npm run build
 
 # Production stage - store build in a non-volume path so it always wins over stale volumes
 FROM alpine:latest

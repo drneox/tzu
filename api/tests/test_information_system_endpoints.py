@@ -7,19 +7,28 @@ from tests.conftest import client
 class TestInformationSystemEndpoints:
     """Tests para sistemas de información"""
     
-    def test_create_information_system(self, auth_headers):
-        """Test creating new information system"""
+    def test_create_information_system(self, admin_auth_headers):
+        """Test creating new information system (requires analyst or admin role)"""
         system_data = {
             "title": "Sistema de Prueba",
             "description": "Un sistema para testing"
         }
-        response = client.post("/new", json=system_data, headers=auth_headers)
+        response = client.post("/new", json=system_data, headers=admin_auth_headers)
         assert response.status_code == 200
         
         data = response.json()
         assert data["title"] == "Sistema de Prueba"
         assert data["description"] == "Un sistema para testing"
         assert "id" in data
+
+    def test_create_information_system_reader_forbidden(self, auth_headers):
+        """Test that reader role cannot create information systems"""
+        system_data = {
+            "title": "Sistema de Prueba",
+            "description": "No debería crearse"
+        }
+        response = client.post("/new", json=system_data, headers=auth_headers)
+        assert response.status_code == 403
     
     def test_create_information_system_without_auth(self):
         """Test creating system without authentication"""
@@ -78,31 +87,31 @@ class TestInformationSystemEndpoints:
         # Note: PUT endpoint may not exist, expect 405 Method Not Allowed
         assert response.status_code in [200, 405]
     
-    def test_delete_information_system(self, auth_headers):
-        """Test eliminar sistema de información"""
+    def test_delete_information_system(self, admin_auth_headers):
+        """Test eliminar sistema de información (requires analyst or admin role)"""
         # Crear sistema para eliminar
         system_data = {
             "title": "Sistema a Eliminar",
             "description": "Para borrar"
         }
-        create_response = client.post("/new", json=system_data, headers=auth_headers)
+        create_response = client.post("/new", json=system_data, headers=admin_auth_headers)
         assert create_response.status_code == 200
         
         system_id = create_response.json()["id"]
         
         # Eliminar el sistema
-        delete_response = client.delete(f"/information_systems/{system_id}", headers=auth_headers)
+        delete_response = client.delete(f"/information_systems/{system_id}", headers=admin_auth_headers)
         # Note: DELETE endpoint may not exist, expect 405 Method Not Allowed
         assert delete_response.status_code in [200, 405]
         
         # Note: Since DELETE might not be implemented, skip verification
         if delete_response.status_code == 200:
             # Only verify deletion if delete succeeded
-            get_response = client.get(f"/information_systems/{system_id}", headers=auth_headers)
+            get_response = client.get(f"/information_systems/{system_id}", headers=admin_auth_headers)
             assert get_response.status_code == 404
     
-    def test_evaluate_system(self, auth_headers, test_information_system):
-        """Test evaluar sistema de información"""
-        response = client.post(f"/evaluate/{str(test_information_system.id)}", headers=auth_headers)
+    def test_evaluate_system(self, admin_auth_headers, test_information_system):
+        """Test evaluar sistema de información (requires analyst or admin role)"""
+        response = client.post(f"/evaluate/{str(test_information_system.id)}", headers=admin_auth_headers)
         # Note: Evaluate endpoint may expect different parameters
         assert response.status_code in [200, 422]

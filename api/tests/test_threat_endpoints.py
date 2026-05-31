@@ -7,14 +7,14 @@ from tests.conftest import client
 class TestThreatEndpoints:
     """Tests for threats"""
     
-    def test_create_threat(self, auth_headers, test_information_system):
-        """Test creating a new threat"""
+    def test_create_threat(self, admin_auth_headers, test_information_system):
+        """Test creating a new threat (requires analyst or admin role)"""
         threat_data = {
             "title": "Test Threat",
             "type": "Malware",
             "description": "A threat for testing"
         }
-        response = client.post(f"/information_systems/{str(test_information_system.id)}/threats", json=threat_data, headers=auth_headers)
+        response = client.post(f"/information_systems/{str(test_information_system.id)}/threats", json=threat_data, headers=admin_auth_headers)
         assert response.status_code == 200
         
         data = response.json()
@@ -47,7 +47,7 @@ class TestThreatEndpoints:
         response = client.get(f"/information_systems/{str(test_information_system.id)}/threats")
         assert response.status_code == 401
     
-    def test_get_threat_by_id(self, auth_headers, test_information_system):
+    def test_get_threat_by_id(self, admin_auth_headers, test_information_system):
         """Test getting specific threat by ID"""
         # Create threat first
         threat_data = {
@@ -55,13 +55,13 @@ class TestThreatEndpoints:
             "type": "DDoS",
             "description": "To get by ID"
         }
-        create_response = client.post(f"/information_systems/{str(test_information_system.id)}/threats", json=threat_data, headers=auth_headers)
+        create_response = client.post(f"/information_systems/{str(test_information_system.id)}/threats", json=threat_data, headers=admin_auth_headers)
         assert create_response.status_code == 200
         
         threat_id = create_response.json()["id"]
         
         # Get by ID using individual endpoint
-        response = client.get(f"/threat/{threat_id}", headers=auth_headers)
+        response = client.get(f"/threat/{threat_id}", headers=admin_auth_headers)
         assert response.status_code == 200
         
         data = response.json()
@@ -75,15 +75,15 @@ class TestThreatEndpoints:
         response = client.get(f"/threat/{fake_uuid}", headers=auth_headers)
         assert response.status_code == 404
     
-    def test_update_threat(self, auth_headers, test_information_system):
-        """Test updating threat"""
+    def test_update_threat(self, admin_auth_headers, test_information_system):
+        """Test updating threat (requires analyst or admin role)"""
         # Create threat to update
         threat_data = {
             "title": "Original Threat",
             "type": "Ransomware",
             "description": "Original description"
         }
-        create_response = client.post(f"/information_systems/{str(test_information_system.id)}/threats", json=threat_data, headers=auth_headers)
+        create_response = client.post(f"/information_systems/{str(test_information_system.id)}/threats", json=threat_data, headers=admin_auth_headers)
         assert create_response.status_code == 200
         
         threat_id = create_response.json()["id"]
@@ -94,7 +94,7 @@ class TestThreatEndpoints:
             "probability": "Medium", 
             "risk_level": "High"
         }
-        response = client.put(f"/threat/{threat_id}/risk", json=update_data, headers=auth_headers)
+        response = client.put(f"/threat/{threat_id}/risk", json=update_data, headers=admin_auth_headers)
         assert response.status_code == 200
         
         data = response.json()
@@ -102,25 +102,25 @@ class TestThreatEndpoints:
         assert "risk" in data
         # Note: The API response structure may differ, adjust assertions as needed
     
-    def test_delete_threat(self, auth_headers, test_information_system):
-        """Test deleting threat"""
+    def test_delete_threat(self, admin_auth_headers, test_information_system):
+        """Test deleting threat (requires analyst or admin role)"""
         # Create threat to delete
         threat_data = {
             "title": "Threat to Delete",
             "type": "Social Engineering",
             "description": "To be deleted"
         }
-        create_response = client.post(f"/information_systems/{str(test_information_system.id)}/threats", json=threat_data, headers=auth_headers)
+        create_response = client.post(f"/information_systems/{str(test_information_system.id)}/threats", json=threat_data, headers=admin_auth_headers)
         assert create_response.status_code == 200
         
         threat_id = create_response.json()["id"]
         
         # Delete the threat
-        delete_response = client.delete(f"/threat/{threat_id}", headers=auth_headers)
+        delete_response = client.delete(f"/threat/{threat_id}", headers=admin_auth_headers)
         assert delete_response.status_code == 200
         
         # Verify it no longer exists
-        get_response = client.get(f"/threat/{threat_id}", headers=auth_headers)
+        get_response = client.get(f"/threat/{threat_id}", headers=admin_auth_headers)
         assert get_response.status_code == 404
     
     def test_get_threats_by_system(self, auth_headers, test_information_system):
@@ -145,3 +145,42 @@ class TestThreatEndpoints:
         
         # Verify endpoint exists (may return 200, 404, or 405 depending on implementation)
         assert response.status_code in [200, 404, 405]
+
+    def test_analyst_can_delete_own_threat(self, analyst_auth_headers, test_information_system):
+        """Test that analyst can delete a threat they created"""
+        threat_data = {
+            "title": "Analyst Owned Threat",
+            "type": "Virus",
+            "description": "Threat created by analyst"
+        }
+        create_response = client.post(
+            f"/information_systems/{str(test_information_system.id)}/threats",
+            json=threat_data,
+            headers=analyst_auth_headers
+        )
+        assert create_response.status_code == 200
+        threat_id = create_response.json()["id"]
+
+        # Analyst can delete their own threat
+        delete_response = client.delete(f"/threat/{threat_id}", headers=analyst_auth_headers)
+        assert delete_response.status_code == 200
+
+    def test_analyst_cannot_delete_other_users_threat(self, analyst_auth_headers, admin_auth_headers, test_information_system):
+        """Test that analyst gets 403 when trying to delete a threat they didn't create"""
+        threat_data = {
+            "title": "Admin Owned Threat",
+            "type": "Trojan",
+            "description": "Threat created by admin"
+        }
+        # Admin creates the threat
+        create_response = client.post(
+            f"/information_systems/{str(test_information_system.id)}/threats",
+            json=threat_data,
+            headers=admin_auth_headers
+        )
+        assert create_response.status_code == 200
+        threat_id = create_response.json()["id"]
+
+        # Analyst tries to delete it — should get 403
+        delete_response = client.delete(f"/threat/{threat_id}", headers=analyst_auth_headers)
+        assert delete_response.status_code == 403
