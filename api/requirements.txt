@@ -49,3 +49,4 @@ typing-inspection==0.4.1
 typing_extensions==4.14.1
 uvicorn==0.35.0
 any-llm-sdk[openai,anthropic]==0.13.1
+pdfplumber==0.11.4

@@ -203,6 +203,7 @@ class InformationSystem(Base):
     datetime = Column(DateTime, default=datetime.datetime.utcnow)
     diagram = Column(Text)
     created_by = Column(UUID, ForeignKey("users.id"), nullable=True)
+
     threats = relationship("Threat", back_populates="information_system", cascade="all, delete-orphan")
 
 

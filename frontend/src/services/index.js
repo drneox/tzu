@@ -21,6 +21,7 @@ export const {
   getInformationSystemById,
   createInformationSystem,
   uploadDiagram,
+  uploadDiagramText,
   fetchInformationSystemById
 } = informationSystemService;
 

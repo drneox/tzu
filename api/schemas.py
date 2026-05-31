@@ -116,10 +116,11 @@ class Threat(BaseModel):
 
 class InformationSystem(InformationSystemBase):
     model_config = {"from_attributes": True}
-    
+
     id: UUID
     datetime: datetime
     diagram: str | None = None
+    diagram_input_type: str | None = None  # "image" | "text"
     threats: List[Threat] = []
 
 class ThreatWithSystem(BaseModel):

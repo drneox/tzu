@@ -29,26 +29,42 @@ def generate_control_tags_examples():
     
     return examples
 
-def clientAI(base64_image):
+def clientAI(content, content_type="image"):
+  """
+  Perform STRIDE threat analysis on the provided content.
+
+  Args:
+    content: base64 JPEG string when content_type='image', plain text otherwise.
+    content_type: 'image' | 'text'
+  """
   try:
     # Generar ejemplos dinámicos de control tags
     control_tag_examples = generate_control_tags_examples()
-    
+
     # Generar información dinámica sobre estándares disponibles
     available_standards = standards.get_available_standards()
     standards_list = ", ".join(available_standards)
     standards_info = f"The system includes {len(standards.ALL_CONTROLS)} security controls from  {len(available_standards)} international standards: {standards_list}."
-    
+
     # Construir ejemplos para el prompt
     examples_text = ""
     for category, tags in control_tag_examples.items():
         examples_text += f"**{category} threats**: {', '.join(tags)}\n"
-    
+
+    input_description = (
+        "a conceptual diagram (it may be a sequence diagram, data flow diagram, "
+        "use case diagram, or architectural diagram)"
+        if content_type == "image"
+        else "a textual description of a system architecture or security design "
+             "(it may be plain text, structured markup, a data flow description, "
+             "or any other written representation of a system)"
+    )
+
     # Create dynamic prompt with updated examples
     dynamic_prompt = f"""
 You are a senior cybersecurity expert. Perform a detailed threat modeling analysis using the STRIDE methodology, explicitly referencing OWASP MASVS and ASVS categories where applicable, and categorize risks using the OWASP Risk Rating Methodology.
 
-The input will be a conceptual diagram (it may be a sequence diagram, data flow diagram, use case diagram, or architectural diagram). It does not represent a real production system, only wireframes or conceptual models. Focus ONLY on the security perspective — no functional or architectural explanation is required.
+The input will be {input_description}. It does not represent a real production system, only wireframes or conceptual models. Focus ONLY on the security perspective — no functional or architectural explanation is required.
 
 Important requirements:
 - Each threat must explicitly mention the **asset or flow** affected in the diagram (e.g., login form, API Gateway, session token, OTP mechanism, transaction service).
@@ -132,7 +148,7 @@ Use the following JSON output structure:
   ]
 }}
 """
-    
+
     # Get AI response
     ai_model = os.environ.get("AI_MODEL")
     if not ai_model:
@@ -141,20 +157,25 @@ Use the following JSON output structure:
     if not api_key:
       raise ValueError("AI_API_KEY no está definido en las variables de entorno")
     api_base = os.environ.get("AI_API_BASE") or None
+
+    if content_type == "image":
+      user_content = [
+        {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{content}"}}
+      ]
+    else:
+      user_content = (
+        f"A continuación se presenta la descripción/representación del sistema a analizar:\n\n"
+        f"{content}"
+      )
+
     response = completion(
       model=ai_model, # <provider_id>/<model_id> — configured via AI_MODEL in .env
       api_key=api_key,
       api_base=api_base,
       messages=[
         {"role": "system", "content": "%s" % dynamic_prompt},
-        {"role": "user", "content": [
-        {"type": "image_url",
-          "image_url":{
-          "url": f"data:image/jpeg;base64,{base64_image}"
-        }}
-      ],
-      "max_tokens": None}
-    ])
+        {"role": "user", "content": user_content, "max_tokens": None}
+      ])
     
     # Extraer el texto de la respuesta
     response_text = response.choices[0].message.content.strip()
