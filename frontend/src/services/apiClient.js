@@ -71,3 +71,8 @@ export const deleteUser = async (userId) => {
   const response = await apiClient.delete(`/users/${userId}`);
   return response.data;
 };
+
+export const getAuditLog = async (params = {}) => {
+  const response = await apiClient.get('/admin/audit-log', { params });
+  return response.data;
+};

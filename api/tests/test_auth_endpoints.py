@@ -114,3 +114,22 @@ class TestAuthEndpoints:
         headers = {"Authorization": "Bearer invalid_token"}
         response = client.get("/users/me", headers=headers)
         assert response.status_code == 401
+
+    def test_cannot_demote_last_admin(self, admin_auth_headers, admin_user):
+        """Test that demoting the last admin via role change returns 400"""
+        # Try to demote the only admin to reader
+        response = client.put(
+            f"/users/{str(admin_user.id)}/role",
+            json={"role": "reader"},
+            headers=admin_auth_headers
+        )
+        assert response.status_code == 400
+
+    def test_cannot_deactivate_last_admin(self, admin_auth_headers, admin_user):
+        """Test that deactivating the last admin returns 400"""
+        response = client.put(
+            f"/users/{str(admin_user.id)}/active",
+            json={"is_active": False},
+            headers=admin_auth_headers
+        )
+        assert response.status_code == 400

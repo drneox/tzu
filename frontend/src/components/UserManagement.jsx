@@ -5,9 +5,9 @@ import {
   Modal, ModalOverlay, ModalContent, ModalHeader,
   ModalBody, ModalFooter, ModalCloseButton,
   FormControl, FormLabel, Input, useDisclosure,
-  Spinner
+  Spinner, Tabs, TabList, Tab, TabPanels, TabPanel, Text
 } from '@chakra-ui/react';
-import { getUsers, createUser, updateUserRole, updateUserActive, deleteUser } from '../services/apiClient';
+import { getUsers, createUser, updateUserRole, updateUserActive, deleteUser, getAuditLog } from '../services/apiClient';
 import { useLocalization } from '../hooks/useLocalization';
 
 const ROLES = ['admin', 'analyst', 'reader'];
@@ -19,6 +19,8 @@ const UserManagement = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [newUser, setNewUser] = useState({ username: '', email: '', name: '', password: '', role: 'reader' });
+  const [auditLog, setAuditLog] = useState([]);
+  const [auditLoading, setAuditLoading] = useState(false);
   const { isOpen, onOpen, onClose } = useDisclosure();
   const toast = useToast();
 
@@ -36,6 +38,18 @@ const UserManagement = () => {
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { fetchUsers(); }, []);
+
+  const fetchAuditLog = async () => {
+    setAuditLoading(true);
+    try {
+      const data = await getAuditLog({ limit: 100 });
+      setAuditLog(data);
+    } catch (err) {
+      toast({ title: 'Error loading audit log', description: err.message, status: 'error', duration: 4000 });
+    } finally {
+      setAuditLoading(false);
+    }
+  };
 
   const handleCreate = async () => {
     setSubmitting(true);
@@ -93,6 +107,13 @@ const UserManagement = () => {
         <Button colorScheme="blue" onClick={onOpen}>{tU.new_user || '+ New User'}</Button>
       </HStack>
 
+      <Tabs onChange={(idx) => { if (idx === 1) fetchAuditLog(); }}>
+        <TabList>
+          <Tab>{tU.users_tab || 'Users'}</Tab>
+          <Tab>{tU.audit_tab || 'Audit Log'}</Tab>
+        </TabList>
+        <TabPanels>
+          <TabPanel px={0}>
       <Table variant="simple" size="sm">
         <Thead>
           <Tr>
@@ -139,6 +160,38 @@ const UserManagement = () => {
           ))}
         </Tbody>
       </Table>
+          </TabPanel>
+          <TabPanel px={0}>
+            {auditLoading ? <Spinner /> : (
+              <Table variant="simple" size="sm">
+                <Thead>
+                  <Tr>
+                    <Th>Timestamp</Th>
+                    <Th>Action</Th>
+                    <Th>Performed By</Th>
+                    <Th>Target User</Th>
+                    <Th>Detail</Th>
+                  </Tr>
+                </Thead>
+                <Tbody>
+                  {auditLog.length === 0 && (
+                    <Tr><Td colSpan={5}><Text color="gray.500">No audit log entries</Text></Td></Tr>
+                  )}
+                  {auditLog.map((entry) => (
+                    <Tr key={entry.id}>
+                      <Td fontSize="xs">{new Date(entry.timestamp).toLocaleString()}</Td>
+                      <Td><Badge>{entry.action}</Badge></Td>
+                      <Td fontSize="xs">{entry.performed_by_id}</Td>
+                      <Td fontSize="xs">{entry.target_user_id || '-'}</Td>
+                      <Td fontSize="xs">{entry.detail || '-'}</Td>
+                    </Tr>
+                  ))}
+                </Tbody>
+              </Table>
+            )}
+          </TabPanel>
+        </TabPanels>
+      </Tabs>
 
       <Modal isOpen={isOpen} onClose={onClose}>
         <ModalOverlay />

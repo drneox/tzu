@@ -52,7 +52,7 @@ const Analysis = () => {
   const [inherentRisks, setInherentRisks] = useState({});
   const [residualRisks, setResidualRisks] = useState({});
   const { locale, t } = useLocalization();
-  const { canWrite } = useAuth();
+  const { canWrite, isAdmin, user } = useAuth();
   const { isOpen, onOpen, onClose } = useDisclosure();
   const toast = useToast();
   
@@ -717,6 +717,7 @@ const Analysis = () => {
                         >
                           {t?.ui?.edit || 'Edit'}
                         </Button>
+                        {(isAdmin || (canWrite && threat.created_by && threat.created_by === user?.id)) && (
                         <Button
                           size="sm"
                           colorScheme="red"
@@ -749,6 +750,7 @@ const Analysis = () => {
                         >
                           {t?.ui?.delete || 'Delete'}
                         </Button>
+                        )}
                       </VStack>
                     </HStack>
                   </CardBody>
@@ -806,6 +808,7 @@ const Analysis = () => {
                           <Text fontWeight="bold" fontSize="xl">{threat.title}</Text>
                           {renderTypeBadges(threat.type)}
                         </VStack>
+                        {(isAdmin || (canWrite && threat.created_by && threat.created_by === user?.id)) && (
                         <Button
                           colorScheme="red"
                           variant="outline"
@@ -833,6 +836,7 @@ const Analysis = () => {
                         >
                           {t?.ui?.delete || 'Delete'}
                         </Button>
+                        )}
                       </HStack>
                       
                       <Text color="gray.600">{threat.description}</Text>
@@ -1311,6 +1315,7 @@ const Analysis = () => {
                   </FormControl>
                 </Td>
                 <Td p="4" shadow="md">
+                  {(isAdmin || (canWrite && threat.created_by && threat.created_by === user?.id)) && (
                   <button
                     type="button"
                     style={{ background: '#e2e8f0', color: '#2d3748', border: 'none', borderRadius: '4px', padding: '4px 10px', cursor: 'pointer' }}
@@ -1345,6 +1350,7 @@ const Analysis = () => {
                       );
                     }}
                   ><FaTrash size={20} /></button>
+                  )}
                 </Td>
               </Tr>
             ))}
@@ -1419,7 +1425,7 @@ const Analysis = () => {
             }
           }}
         >+ {t?.ui?.add_threat || 'Add Threat'}</button>}
-        <button
+        {canWrite && <button
           type="button"
           style={{ padding: '10px 30px', fontSize: '16px', background: '#ffa833', color: '#00243c', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
           onClick={async () => {
@@ -1531,7 +1537,7 @@ const Analysis = () => {
               console.error(error);
             }
           }}
-        >{t?.ui?.save_all || 'Save All'}</button>
+        >{t?.ui?.save_all || 'Save All'}</button>}
       </div>
 
       {/* Modal to show image in full size */}

@@ -183,4 +183,15 @@ class TokenData(BaseModel):
 
 class UserLogin(BaseModel):
     username: str
+
+
+class AuditLogEntry(BaseModel):
+    model_config = {"from_attributes": True}
+
+    id: UUID
+    action: str
+    target_user_id: Optional[UUID] = None
+    performed_by_id: UUID
+    timestamp: datetime
+    detail: Optional[str] = None
     password: str

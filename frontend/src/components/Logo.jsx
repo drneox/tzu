@@ -12,7 +12,7 @@ const Logo = () => {
         className="header_image" 
         src="/tzu.png" 
         alt="TZU Security Logo" 
-        width="100vh" 
+        style={{ height: "38px", width: "auto", display: "block" }}
       />
     </Box>
   );

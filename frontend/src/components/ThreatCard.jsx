@@ -38,7 +38,7 @@ const ThreatCard = ({
   createRemediationSwitch
 }) => {
   const { t } = useLocalization();
-  const { canWrite, isAdmin } = useAuth();
+  const { canWrite, isAdmin, user } = useAuth();
   const cardBg = useColorModeValue('white', 'gray.800');
   const borderColor = useColorModeValue('gray.200', 'gray.600');
 
@@ -87,7 +87,7 @@ const ThreatCard = ({
               {isEditing ? t?.ui?.cancel || 'Cancel' : t?.ui?.edit || 'Edit'}
             </Button>
           )}
-          {isAdmin && (
+          {(isAdmin || (canWrite && threat.created_by && threat.created_by === user?.id)) && (
             <Button
               size="sm"
               colorScheme="red"

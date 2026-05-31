@@ -3,7 +3,7 @@ export const headerContainer = {
   as: "header",
   align: "center",
   px: "1.25rem",
-  h: "56px",
+  h: "64px",
   bg: "#00243c",
   color: "#ffa833",
   boxShadow: "0 1px 0 rgba(255,168,51,0.15)"
