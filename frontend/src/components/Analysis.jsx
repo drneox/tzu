@@ -5,6 +5,7 @@ import { FaTrash, FaFilePdf, FaEdit, FaEye, FaTable, FaThLarge, FaEyeSlash } fro
 import { Flex, TableContainer, Table, Tr, Td, Thead, Th, Tbody, Card, CardHeader, CardBody, Grid, GridItem, Text, Image as ChakraImage, Modal, ModalOverlay, ModalContent, ModalCloseButton, ModalBody, useDisclosure, Button, useToast, Tabs, TabList, TabPanels, Tab, TabPanel, Accordion, AccordionItem, AccordionButton, AccordionPanel, AccordionIcon, VStack, HStack, Divider, Badge, useColorModeValue, Box, Tooltip, Switch, FormControl, FormLabel } from "@chakra-ui/react";
 import { fetchInformationSystemById, getInformationSystemById, updateThreatsRiskBatch, createThreatForSystem, deleteThreat } from "../services/index";
 import { useLocalization, getOwaspSelectOptions } from '../hooks/useLocalization';
+import { useAuth } from '../context/AuthContext';
 import OwaspSelector from './OwaspSelector';
 import ReportGenerator from './ReportGenerator';
 import RiskDisplay from './RiskDisplay';
@@ -51,6 +52,7 @@ const Analysis = () => {
   const [inherentRisks, setInherentRisks] = useState({});
   const [residualRisks, setResidualRisks] = useState({});
   const { locale, t } = useLocalization();
+  const { canWrite } = useAuth();
   const { isOpen, onOpen, onClose } = useDisclosure();
   const toast = useToast();
   
@@ -1360,7 +1362,7 @@ const Analysis = () => {
           <FaFilePdf size={16} />
           {t?.ui?.generate_report || 'Generate Report'}
         </button>
-        <button
+        {canWrite && <button
           type="button"
           style={{ padding: '10px 30px', fontSize: '16px', background: '#38a169', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
           onClick={async () => {
@@ -1416,7 +1418,7 @@ const Analysis = () => {
               );
             }
           }}
-        >+ {t?.ui?.add_threat || 'Add Threat'}</button>
+        >+ {t?.ui?.add_threat || 'Add Threat'}</button>}
         <button
           type="button"
           style={{ padding: '10px 30px', fontSize: '16px', background: '#ffa833', color: '#00243c', border: 'none', borderRadius: '6px', cursor: 'pointer' }}

@@ -15,6 +15,7 @@ import RiskDisplay from './RiskDisplay';
 import OwaspSelector from './OwaspSelector';
 import { calculateTextareaHeight } from '../utils/textareaHelpers';
 import { useLocalization } from '../hooks/useLocalization';
+import { useAuth } from '../context/AuthContext';
 
 /**
  * ThreatCard component - Individual threat card with OWASP risk assessment
@@ -37,6 +38,7 @@ const ThreatCard = ({
   createRemediationSwitch
 }) => {
   const { t } = useLocalization();
+  const { canWrite, isAdmin } = useAuth();
   const cardBg = useColorModeValue('white', 'gray.800');
   const borderColor = useColorModeValue('gray.200', 'gray.600');
 
@@ -74,24 +76,28 @@ const ThreatCard = ({
           >
             {isCollapsed ? t?.ui?.show || 'Show' : t?.ui?.hide || 'Hide'}
           </Button>
-          <Button
-            size="sm"
-            colorScheme="yellow"
-            variant="ghost"
-            leftIcon={<FaEdit />}
-            onClick={() => onToggleEdit(threat.id)}
-          >
-            {isEditing ? t?.ui?.cancel || 'Cancel' : t?.ui?.edit || 'Edit'}
-          </Button>
-          <Button
-            size="sm"
-            colorScheme="red"
-            variant="ghost"
-            leftIcon={<FaTrash />}
-            onClick={() => onThreatDelete(threat.id)}
-          >
-            {t?.ui?.delete || 'Delete'}
-          </Button>
+          {canWrite && (
+            <Button
+              size="sm"
+              colorScheme="yellow"
+              variant="ghost"
+              leftIcon={<FaEdit />}
+              onClick={() => onToggleEdit(threat.id)}
+            >
+              {isEditing ? t?.ui?.cancel || 'Cancel' : t?.ui?.edit || 'Edit'}
+            </Button>
+          )}
+          {isAdmin && (
+            <Button
+              size="sm"
+              colorScheme="red"
+              variant="ghost"
+              leftIcon={<FaTrash />}
+              onClick={() => onThreatDelete(threat.id)}
+            >
+              {t?.ui?.delete || 'Delete'}
+            </Button>
+          )}
         </HStack>
       </Flex>
 

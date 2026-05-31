@@ -104,15 +104,71 @@ def get_user(db: Session, user_id: int):
 def get_user_by_username(db: Session, username: str):
     return db.query(models.User).filter(models.User.username == username).first()
 
+def list_users(db: Session, skip: int = 0, limit: int = 100, role: str = None, is_active: bool = None):
+    query = db.query(models.User)
+    if role is not None:
+        query = query.filter(models.User.role == role)
+    if is_active is not None:
+        query = query.filter(models.User.is_active == is_active)
+    return query.offset(skip).limit(limit).all()
+
+def _count_active_admins(db: Session) -> int:
+    return db.query(models.User).filter(
+        models.User.role == "admin",
+        models.User.is_active == True
+    ).count()
+
+def update_user_role(db: Session, user_id: str, new_role: str):
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        return None, "User not found"
+    # RB-001: cannot demote the last active admin
+    if user.role == "admin" and new_role != "admin":
+        if _count_active_admins(db) <= 1:
+            return None, "Cannot demote the last active admin"
+    user.role = new_role
+    # Keep is_admin in sync
+    user.is_admin = (new_role == "admin")
+    db.commit()
+    db.refresh(user)
+    return user, None
+
+def update_user_active(db: Session, user_id: str, is_active: bool):
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        return None, "User not found"
+    # RB-002: cannot deactivate the last active admin
+    if user.role == "admin" and not is_active:
+        if _count_active_admins(db) <= 1:
+            return None, "Cannot deactivate the last active admin"
+    user.is_active = is_active
+    db.commit()
+    db.refresh(user)
+    return user, None
+
+def delete_user(db: Session, user_id: str):
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        return None, "User not found"
+    # RB-003: cannot delete the last active admin
+    if user.role == "admin" and user.is_active:
+        if _count_active_admins(db) <= 1:
+            return False, "Cannot delete the last active admin"
+    db.delete(user)
+    db.commit()
+    return True, None
+
 def create_user(db: Session, user: schemas.UserCreate, is_admin: bool = False):
     hashed_password = get_password_hash(user.password)
+    role = user.role if hasattr(user, 'role') and user.role else ("admin" if is_admin else "reader")
     db_user = models.User(
         username=user.username,
         email=user.email,
         name=user.name,
         password_hash=hashed_password,
         is_active=True,
-        is_admin=is_admin
+        is_admin=(role == "admin"),
+        role=role
     )
     db.add(db_user)
     db.commit()

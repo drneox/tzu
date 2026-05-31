@@ -9,8 +9,8 @@ RUN npm install
 # Copy source code
 COPY . .
 
-# Build the app
-RUN npm run build
+# Build the app (inyecta versión desde package.json)
+RUN REACT_APP_VERSION=$(node -p "require('./package.json').version") npm run build
 
 # Production stage - just copy build files to volume
 FROM nginx:alpine

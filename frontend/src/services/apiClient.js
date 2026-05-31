@@ -42,3 +42,32 @@ apiClient.interceptors.response.use(
 );
 
 export default apiClient;
+
+// ========================================
+// USER MANAGEMENT FUNCTIONS
+// ========================================
+
+export const getUsers = async (params = {}) => {
+  const response = await apiClient.get('/users', { params });
+  return response.data;
+};
+
+export const createUser = async (userData) => {
+  const response = await apiClient.post('/users', userData);
+  return response.data;
+};
+
+export const updateUserRole = async (userId, role) => {
+  const response = await apiClient.put(`/users/${userId}/role`, { role });
+  return response.data;
+};
+
+export const updateUserActive = async (userId, isActive) => {
+  const response = await apiClient.put(`/users/${userId}/active`, { is_active: isActive });
+  return response.data;
+};
+
+export const deleteUser = async (userId) => {
+  const response = await apiClient.delete(`/users/${userId}`);
+  return response.data;
+};

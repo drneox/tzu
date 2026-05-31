@@ -223,4 +223,5 @@ class User(Base):
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     is_active = Column(Boolean, default=True)
     is_admin = Column(Boolean, default=False)
+    role = Column(String, default="reader")
 
