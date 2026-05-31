@@ -200,6 +200,8 @@ class InformationSystem(Base):
     description = Column(Text)
     datetime = Column(DateTime, default=datetime.datetime.utcnow)
     diagram = Column(Text)
+    # "image" | "text" — tracks whether the last analysis input was a file/image or plain text
+    diagram_input_type = Column(String, nullable=True)
     threats = relationship("Threat", back_populates="information_system", cascade="all, delete-orphan")
 
 

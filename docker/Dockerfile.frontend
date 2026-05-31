@@ -12,9 +12,9 @@ COPY . .
 # Build the app
 RUN npm run build
 
-# Production stage - just copy build files to volume
-FROM nginx:alpine
-COPY --from=build /app/build /app
+# Production stage - store build in a non-volume path so it always wins over stale volumes
+FROM alpine:latest
+COPY --from=build /app/build /build_static
 WORKDIR /app
-# Keep container running so volume persists
-CMD ["tail", "-f", "/dev/null"]
+# Always copy the fresh build into the volume-mounted /app on every container start
+CMD sh -c "cp -rf /build_static/. /app/ && tail -f /dev/null"

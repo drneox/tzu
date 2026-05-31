@@ -212,8 +212,12 @@ def update_threat_risk(db: Session, threat_id: str, data: dict):
     for key in owasp_fields:
         if key in data and risk:
             if key == 'residual_risk':
-                print(f"Guardando riesgo residual: {data[key]}")
-            setattr(risk, key, data[key])
+                inherent_score = risk.overall_risk_score
+                clamped = min(float(data[key]), inherent_score) if data[key] is not None else None
+                print(f"Guardando riesgo residual: {data[key]} → {clamped} (inherente: {inherent_score})")
+                setattr(risk, key, clamped)
+            else:
+                setattr(risk, key, data[key])
     
     db.add(threat)
     if risk:
@@ -265,9 +269,11 @@ def create_use_case(db: Session, use_case: schemas.UseCase):
     return db_use_case
 
 
-def attach_diagram(db: Session, information_system_id: str, image_path: str):
+def attach_diagram(db: Session, information_system_id: str, image_path: str, input_type: str = None):
     information_system = db.query(models.InformationSystem).filter(models.InformationSystem.id==UUID(information_system_id)).first()
     information_system.diagram = image_path
+    if input_type is not None:
+        information_system.diagram_input_type = input_type
     db.add(information_system)
     db.commit()
     db.refresh(information_system)
