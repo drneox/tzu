@@ -49,7 +49,8 @@ const ControlTagsWithAutocomplete = ({ threatId, strideCategory, initialTags = [
   // Función para obtener el color del tag basado en el estándar (misma lógica que el tooltip)
   const getTagColor = (tag) => {
     const tagDetails = tagDetailsMap[tag];
-    const standard = tagDetails?.standard;
+    // Primary: standard from API details; Fallback: extract from "(STANDARD)" suffix
+    const standard = tagDetails?.standard || tag.match(/\(([^)]+)\)$/)?.[1];
     
     switch (standard?.toUpperCase()) {
       case 'ASVS': return 'blue';
