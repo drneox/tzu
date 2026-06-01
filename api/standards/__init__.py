@@ -82,14 +82,14 @@ for standard_name in STANDARDS_MAP.keys():
     globals()[f"{standard_name}_CONTROLS"] = STANDARDS_MAP[standard_name]
     globals()[f"{standard_name}_TAGS"] = list(STANDARDS_MAP[standard_name].keys())
 
-# STRIDE Control Examples (kept static for now)
+# STRIDE Control Examples — one real tag per relevant standard per category
 STRIDE_CONTROL_EXAMPLES = {
-    "SPOOFING": ["V2.1.1", "V2.2.1", "AUTH-1", "A.9.1.1", "PR.AC-1"],
-    "TAMPERING": ["V4.1.1", "V4.2.1", "CODE-1", "A.8.2.1", "PR.DS-6"],
-    "REPUDIATION": ["V3.1.1", "V3.2.1", "A.9.4.2", "PR.PT-1"],
-    "INFORMATION_DISCLOSURE": ["V2.1.2", "V2.1.3", "STORAGE-1", "A.9.4.1", "PR.DS-1"],
-    "DENIAL_OF_SERVICE": ["V1.1.1", "V1.2.1", "A.11.2.4", "PR.DS-4"],
-    "ELEVATION_OF_PRIVILEGE": ["V4.1.1", "V4.2.1", "A.9.2.3", "PR.AC-4"]
+    "SPOOFING": ["V2.1.1", "V2.2.1", "AUTH-1", "A.9.1.1", "PR.AC-1", "SBS-2158-5"],
+    "TAMPERING": ["V4.1.1", "V4.2.1", "CODE-1", "A.8.2.1", "PR.DS-6", "SBS-2158-7"],
+    "REPUDIATION": ["V3.1.1", "V3.2.1", "A.9.4.2", "PR.PT-1", "SBS-2158-8"],
+    "INFORMATION_DISCLOSURE": ["V2.1.2", "V2.1.3", "STORAGE-1", "A.9.4.1", "PR.DS-1", "SBS-2158-4"],
+    "DENIAL_OF_SERVICE": ["V1.1.1", "V1.2.1", "A.11.2.4", "PR.DS-4", "SBS-2167-8"],
+    "ELEVATION_OF_PRIVILEGE": ["V4.1.1", "V4.2.1", "A.9.2.3", "PR.AC-4", "SBS-2158-6"],
 }
 
 # =====================================================
@@ -392,8 +392,135 @@ def get_standard_info(standard_name: str = None) -> dict:
         }
 
 # =====================================================
+# =====================================================
 # EXPORTS FOR COMPATIBILITY
 # =====================================================
+
+# =====================================================
+# CONTROL TAG VALIDATION & CORRECTION (Option B)
+# =====================================================
+
+import re as _re
+
+# Regex patterns that identify each standard's tag format
+_STANDARD_PATTERNS = {
+    "ASVS":     _re.compile(r'^V\d+\.\d+\.\d+$'),
+    "MASVS":    _re.compile(r'^[A-Z]+-\d+$'),
+    "NIST":     _re.compile(r'^[A-Z]{2,3}\.[A-Z]{2,3}-\d+$'),
+    "ISO27001": _re.compile(r'^(ISO27001-)?A\.\d+\.\d+\.\d+$'),
+    "SBS":      _re.compile(r'^SBS-\d{4}-\d+$'),
+}
+
+
+def _parse_formatted_tag(formatted_tag: str):
+    """
+    Parses 'V2.1.1 (ASVS)' → (tag_id='V2.1.1', standard_hint='ASVS').
+    Also handles bare IDs like 'V2.1.1'.
+    """
+    m = _re.match(r'^(.+?)\s*\(([^)]+)\)\s*$', formatted_tag.strip())
+    if m:
+        return m.group(1).strip(), m.group(2).strip().upper()
+    return formatted_tag.strip(), None
+
+
+def _detect_standard_from_pattern(tag_id: str) -> str:
+    """Returns the standard name if tag_id matches its format pattern, else ''."""
+    for std, pattern in _STANDARD_PATTERNS.items():
+        if pattern.match(tag_id):
+            return std
+    return ""
+
+
+def _closest_sbs_tag(tag_id: str) -> str | None:
+    """
+    Given an invalid SBS tag (e.g. 'SBS-2158-99'), tries to find the closest
+    valid SBS tag:
+    1. Same resolution number → pick the one with the nearest control number.
+    2. Any SBS tag → fallback to first available.
+    Returns a valid SBS tag_id or None.
+    """
+    sbs_tags = list(STANDARDS_MAP.get("SBS", {}).keys())
+    if not sbs_tags:
+        return None
+
+    # Extract resolution number from the requested tag
+    m = _re.match(r'^SBS-(\d+)-(\d+)$', tag_id)
+    if m:
+        resolution = m.group(1)
+        requested_num = int(m.group(2))
+        # Collect tags with the same resolution
+        same_res = []
+        for t in sbs_tags:
+            tm = _re.match(r'^SBS-(\d+)-(\d+)$', t)
+            if tm and tm.group(1) == resolution:
+                same_res.append((int(tm.group(2)), t))
+        if same_res:
+            # Return the tag with the closest control number
+            same_res.sort(key=lambda x: abs(x[0] - requested_num))
+            return same_res[0][1]
+
+    # Fallback: return the first SBS tag
+    return sbs_tags[0]
+
+
+def validate_and_correct_control_tags(tags: list) -> list:
+    """
+    Validates and corrects control tags returned by the LLM.
+
+    Rules:
+    - Tags found in ALL_CONTROLS: kept as-is (returned in 'ID (STANDARD)' format).
+    - Tags NOT in ALL_CONTROLS but whose ID matches a known format for
+      ASVS / NIST / ISO27001 / MASVS: accepted as-is (LLM knows the full standard;
+      our mapping is a curated subset).
+    - SBS tags NOT in ALL_CONTROLS: corrected to the closest valid SBS tag.
+    - Tags with unrecognised format: removed.
+
+    Args:
+        tags: List of tag strings in any format, e.g. ['V2.1.1 (ASVS)', 'SBS-2158-99']
+
+    Returns:
+        Deduplicated list of validated/corrected tags in 'ID (STANDARD)' format.
+    """
+    result = []
+    seen = set()
+
+    for raw in tags:
+        if not isinstance(raw, str) or not raw.strip():
+            continue
+
+        tag_id, standard_hint = _parse_formatted_tag(raw)
+
+        # 1. Exact match in our dictionary
+        if tag_id in ALL_CONTROLS:
+            formatted = format_tag_for_display(tag_id)
+            if formatted and formatted not in seen:
+                seen.add(formatted)
+                result.append(formatted)
+            continue
+
+        # 2. Detect standard from pattern
+        detected_std = _detect_standard_from_pattern(tag_id)
+        effective_std = detected_std or standard_hint or ""
+
+        if effective_std == "SBS":
+            # SBS is custom: must correct to a real tag
+            corrected_id = _closest_sbs_tag(tag_id)
+            if corrected_id:
+                formatted = format_tag_for_display(corrected_id)
+                if formatted and formatted not in seen:
+                    seen.add(formatted)
+                    result.append(formatted)
+        elif effective_std in ("ASVS", "NIST", "ISO27001", "MASVS"):
+            # Well-known standard: accept the tag even if not in our mapping
+            formatted = f"{tag_id} ({effective_std})"
+            if formatted not in seen:
+                seen.add(formatted)
+                result.append(formatted)
+        # else: unknown format → discard silently
+
+    return result
+
+
 
 __all__ = [
     # Main dictionaries
@@ -407,5 +534,5 @@ __all__ = [
     'normalize_tag_for_lookup', 'get_tag_details', 'format_tag_for_display',
     'validate_control_tag', 'get_suggested_tags_for_stride', 'categorize_tags',
     'search_predefined_tags', 'get_all_predefined_tags', 'get_tags_by_standard',
-    'get_available_standards', 'get_standard_info'
+    'get_available_standards', 'get_standard_info', 'validate_and_correct_control_tags'
 ]

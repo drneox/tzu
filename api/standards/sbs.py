@@ -212,23 +212,6 @@ SBS_CONTROLS = {
         "description": "Las empresas deben implementar prácticas de venta responsable de productos financieros.",
         "category": "Protección al Consumidor"
     },
-
-    # Controles Legacy (mantenidos por compatibilidad)
-    "SBS-Resolución-4368-2015-Art5": {
-        "title": "Gestión de Riesgos Operacionales",
-        "description": "Las empresas del sistema financiero deben implementar políticas y procedimientos para la gestión integral de riesgos operacionales.",
-        "category": "Gestión de Riesgos"
-    },
-    "Resolución-4368-2015-Art5": {
-        "title": "Gestión de Riesgos Operacionales", 
-        "description": "Las empresas del sistema financiero deben implementar políticas y procedimientos para la gestión integral de riesgos operacionales.",
-        "category": "Gestión de Riesgos"
-    },
-    "Circular-G-140-2009-Art7": {
-        "title": "Seguridad de la Información",
-        "description": "Normas para la gestión y seguridad de la información en el sistema financiero.",
-        "category": "Seguridad de Información"
-    }
 }
 
 # Lista de tags para compatibilidad hacia atrás

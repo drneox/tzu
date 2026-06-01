@@ -262,7 +262,7 @@ class TestReportsDataGeneration:
                 "MASVS": {"total": 35, "covered": 4, "percentage": 11.4},  # Updated MASVS total and percentage
                 "NIST": {"total": 108, "covered": 25, "percentage": 23.1},
                 "ISO27001": {"total": 59, "covered": 8, "percentage": 13.6},
-                "SBS": {"total": 43, "covered": 6, "percentage": 14.0}
+                "SBS": {"total": 40, "covered": 6, "percentage": 15.0}
             }
         }
         
@@ -292,9 +292,9 @@ class TestReportsDataGeneration:
         report_metadata["lowest_coverage_standard"] = min(coverage_percentages, key=coverage_percentages.get)
         
         # Verificar metadatos (updated total controls count)
-        assert report_metadata["total_controls_available"] == 335  # Updated from 308 to 335
+        assert report_metadata["total_controls_available"] == 332  # Updated from 335 to 332 (removed 3 legacy SBS tags)
         assert report_metadata["total_controls_covered"] == 55
-        assert report_metadata["overall_coverage_percentage"] == round((55/335)*100, 2)  # Recalculated
+        assert report_metadata["overall_coverage_percentage"] == round((55/332)*100, 2)  # Recalculated
         assert report_metadata["standards_count"] == 5
         assert report_metadata["highest_coverage_standard"] == "NIST"  # Updated: NIST now has highest at 23.1%
         assert report_metadata["lowest_coverage_standard"] == "MASVS"  # Updated: MASVS now has lowest at 11.4%
@@ -416,7 +416,7 @@ class TestReportsValidationAndConsistency:
         
         # Verificar que totales siguen siendo correctos
         total_controls = sum(data["total"] for data in coverage_by_standard.values())
-        assert total_controls == 335  # Valor real actual (29+35+108+59+43)
+        assert total_controls == 332  # Valor real actual (90+35+108+59+40)
 
 
 if __name__ == "__main__":

@@ -46,7 +46,7 @@ class TestEnhancedSearchFunctionality:
         
         # Test SBS standard search
         sbs_results = search_predefined_tags('SBS')
-        assert len(sbs_results) == 43  # All SBS controls
+        assert len(sbs_results) == 40  # All SBS controls
         assert all(tag_id in STANDARDS_MAP['SBS'] for tag_id in sbs_results)
     
     def test_search_by_tag_prefix_direct(self):
@@ -153,11 +153,11 @@ class TestEnhancedSearchFunctionality:
         assert len(STANDARDS_MAP['MASVS']) == 35
         assert len(STANDARDS_MAP['ISO27001']) == 59
         assert len(STANDARDS_MAP['NIST']) == 108
-        assert len(STANDARDS_MAP['SBS']) == 43
+        assert len(STANDARDS_MAP['SBS']) == 40
         
         # Total should be 274
         total_controls = sum(len(controls) for controls in STANDARDS_MAP.values())
-        assert total_controls == 335
+        assert total_controls == 332
 
 # Note: API endpoint tests are excluded for now due to response format complexity
 # The core functionality is thoroughly tested through direct function calls above

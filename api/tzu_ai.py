@@ -4,6 +4,7 @@ import os
 from any_llm import completion
 import control_tags
 import standards
+from standards import validate_and_correct_control_tags
 from stride_validator import get_valid_stride_categories
 
 # Docker Compose pasa las variables de entorno automáticamente
@@ -195,7 +196,12 @@ Use the following JSON output structure:
           empty_obj = SimpleNamespace()
           empty_obj.threats = []
           return empty_obj
-        
+                # Post-process: validate and correct control_tags in every threat
+        for threat in threat_analysis_object.threats:
+            if hasattr(threat, 'remediation') and hasattr(threat.remediation, 'control_tags'):
+                raw_tags = threat.remediation.control_tags
+                if isinstance(raw_tags, list):
+                    threat.remediation.control_tags = validate_and_correct_control_tags(raw_tags)
         return threat_analysis_object
       except json.JSONDecodeError as e:
         # Retornar objeto vacío con estructura correcta
