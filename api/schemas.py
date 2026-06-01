@@ -52,20 +52,28 @@ class Remediation(RemediationBase):
     @field_validator('control_tags', mode='before')
     @classmethod
     def parse_control_tags(cls, v):
-        """Parse control_tags from JSON string or return as-is if already a list"""
+        """Parse control_tags from JSON string or return as-is if already a list.
+        Also validates and corrects tags (fixes orphans from old LLM output)."""
         if v is None:
             return []
         elif isinstance(v, str):
             if v == "" or v == "[]":
                 return []
             try:
-                return json.loads(v)
+                parsed = json.loads(v)
             except (json.JSONDecodeError, TypeError):
                 return []
         elif isinstance(v, list):
-            return v
+            parsed = v
         else:
             return []
+
+        # Normalize tags: fix orphans, correct SBS subnumerals, accept valid formats
+        try:
+            from standards import validate_and_correct_control_tags
+            return validate_and_correct_control_tags(parsed)
+        except Exception:
+            return parsed
 
 
 class Risk(BaseModel):
