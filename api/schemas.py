@@ -199,7 +199,6 @@ class AuditLogEntry(BaseModel):
     performed_by_id: UUID
     timestamp: datetime
     detail: Optional[str] = None
-    password: str
 
 
 # =====================================================
