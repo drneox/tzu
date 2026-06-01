@@ -32,7 +32,7 @@ class TestReportsDataGeneration:
             {"control_tags": ["AUTH-1", "NETWORK-1"]},  # MASVS (updated format)
             {"control_tags": ["ID.AM-1", "PR.AC-1"]},  # NIST
             {"control_tags": ["A.5.1.1", "A.8.1.1"]},  # ISO27001
-            {"control_tags": ["SBS-2137-1"]},  # SBS
+            {"control_tags": ["SBS-504-1"]},  # SBS
             {"control_tags": ["V2.1.1", "AUTH-1"]},  # Mixto (updated MASVS)
         ]
         
@@ -67,7 +67,7 @@ class TestReportsDataGeneration:
         
         # Verificar ASVS
         asvs_coverage = coverage_by_standard["ASVS"]
-        assert asvs_coverage["total"] == 90  # Valor real actual
+        assert asvs_coverage["total"] == 94  # Valor real actual
         assert asvs_coverage["covered"] == 3  # V2.1.1, V2.1.2, V3.1.1
         assert asvs_coverage["percentage"] > 0
         
@@ -85,10 +85,10 @@ class TestReportsDataGeneration:
         """Test de análisis de amenazas por severidad"""
         sample_threats = [
             {"severity": "High", "control_tags": ["V2.1.1", "V2.1.2"]},
-            {"severity": "High", "control_tags": ["MSTG-AUTH-1"]},
+            {"severity": "High", "control_tags": ["AUTH-1"]},
             {"severity": "Medium", "control_tags": ["ID.AM-1", "A.5.1.1"]},
             {"severity": "Medium", "control_tags": ["V3.1.1"]},
-            {"severity": "Low", "control_tags": ["SBS-2137-1"]},
+            {"severity": "Low", "control_tags": ["SBS-504-1"]},
             {"severity": "Low", "control_tags": ["A.8.1.1"]},
         ]
         
@@ -112,7 +112,7 @@ class TestReportsDataGeneration:
                 # Determinar estándar
                 if normalized.startswith("V"):
                     severity_analysis[severity]["standards_used"].add("ASVS")
-                elif normalized.startswith("MSTG"):
+                elif normalized in STANDARDS_MAP.get("MASVS", {}):
                     severity_analysis[severity]["standards_used"].add("MASVS")
                 elif "." in normalized and not normalized.startswith("A."):
                     severity_analysis[severity]["standards_used"].add("NIST")
@@ -142,10 +142,10 @@ class TestReportsDataGeneration:
         """Test de análisis de frecuencia de uso de controles"""
         sample_threats = [
             {"control_tags": ["V2.1.1", "V2.1.2"]},
-            {"control_tags": ["V2.1.1", "MSTG-AUTH-1"]},  # V2.1.1 repetido
+            {"control_tags": ["V2.1.1", "AUTH-1"]},  # V2.1.1 repetido
             {"control_tags": ["V2.1.1", "ID.AM-1"]},      # V2.1.1 repetido otra vez
             {"control_tags": ["A.5.1.1", "A.8.1.1"]},
-            {"control_tags": ["SBS-2137-1"]},
+            {"control_tags": ["SBS-504-1"]},
         ]
         
         # Contar frecuencia de uso
@@ -191,11 +191,11 @@ class TestReportsDataGeneration:
         """Test de distribución de uso por estándares"""
         sample_threats = [
             {"control_tags": ["V2.1.1", "V2.1.2", "V3.1.1"]},  # 3 ASVS
-            {"control_tags": ["MSTG-AUTH-1"]},                   # 1 MASVS
+            {"control_tags": ["AUTH-1"]},                        # 1 MASVS
             {"control_tags": ["ID.AM-1", "PR.AC-1"]},          # 2 NIST
             {"control_tags": ["A.5.1.1"]},                      # 1 ISO27001
-            {"control_tags": ["SBS-2137-1", "SBS-2137-2"]},    # 2 SBS
-            {"control_tags": ["V2.1.1", "MSTG-AUTH-1"]},       # 1 ASVS, 1 MASVS (mixto)
+            {"control_tags": ["SBS-504-1", "SBS-504-2"]},      # 2 SBS
+            {"control_tags": ["V2.1.1", "AUTH-1"]},             # 1 ASVS, 1 MASVS (mixto)
         ]
         
         # Contar uso por estándar
@@ -219,7 +219,7 @@ class TestReportsDataGeneration:
                 standard = None
                 if normalized.startswith("V"):
                     standard = "ASVS"
-                elif normalized.startswith("MSTG"):
+                elif normalized in STANDARDS_MAP.get("MASVS", {}):
                     standard = "MASVS"
                 elif "." in normalized and not normalized.startswith("A."):
                     standard = "NIST"
@@ -246,7 +246,7 @@ class TestReportsDataGeneration:
         assert standards_usage["ASVS"]["unique_controls"] == 3    # 3 controles únicos
         assert standards_usage["ASVS"]["threat_count"] == 2       # 2 threats usan ASVS
         
-        assert standards_usage["MASVS"]["total_occurrences"] == 2  # MSTG-AUTH-1(2)
+        assert standards_usage["MASVS"]["total_occurrences"] == 2  # AUTH-1(2)
         assert standards_usage["MASVS"]["unique_controls"] == 1    # 1 control único
         assert standards_usage["MASVS"]["threat_count"] == 2       # 2 threats usan MASVS
     
@@ -258,11 +258,11 @@ class TestReportsDataGeneration:
             "total_information_systems": 3,
             "threats_by_severity": {"High": 5, "Medium": 7, "Low": 3},
             "standards_coverage": {
-                "ASVS": {"total": 90, "covered": 12, "percentage": 13.3},  # Updated ASVS total
+                "ASVS": {"total": 94, "covered": 12, "percentage": 12.8},  # Updated ASVS total
                 "MASVS": {"total": 35, "covered": 4, "percentage": 11.4},  # Updated MASVS total and percentage
                 "NIST": {"total": 108, "covered": 25, "percentage": 23.1},
                 "ISO27001": {"total": 59, "covered": 8, "percentage": 13.6},
-                "SBS": {"total": 40, "covered": 6, "percentage": 15.0}
+                "SBS": {"total": 20, "covered": 6, "percentage": 30.0}
             }
         }
         
@@ -292,12 +292,12 @@ class TestReportsDataGeneration:
         report_metadata["lowest_coverage_standard"] = min(coverage_percentages, key=coverage_percentages.get)
         
         # Verificar metadatos (updated total controls count)
-        assert report_metadata["total_controls_available"] == 332  # Updated from 335 to 332 (removed 3 legacy SBS tags)
+        assert report_metadata["total_controls_available"] == 316  # 94+35+108+59+20
         assert report_metadata["total_controls_covered"] == 55
-        assert report_metadata["overall_coverage_percentage"] == round((55/332)*100, 2)  # Recalculated
+        assert report_metadata["overall_coverage_percentage"] == round((55/316)*100, 2)
         assert report_metadata["standards_count"] == 5
-        assert report_metadata["highest_coverage_standard"] == "NIST"  # Updated: NIST now has highest at 23.1%
-        assert report_metadata["lowest_coverage_standard"] == "MASVS"  # Updated: MASVS now has lowest at 11.4%
+        assert report_metadata["highest_coverage_standard"] == "SBS"   # SBS at 30.0% is highest
+        assert report_metadata["lowest_coverage_standard"] == "MASVS"  # MASVS at 11.4% is lowest
         
         # Verificar que el timestamp es válido
         timestamp = datetime.fromisoformat(report_metadata["generated_at"])
@@ -319,7 +319,7 @@ class TestReportsDataGeneration:
             ],
             "top_controls": [
                 {"tag": "V2.1.1", "frequency": 5, "title": "Verify password strength"},
-                {"tag": "MSTG-AUTH-1", "frequency": 3, "title": "App uses secure authentication"}
+                {"tag": "AUTH-1", "frequency": 3, "title": "App uses secure authentication"}
             ]
         }
         
@@ -416,7 +416,7 @@ class TestReportsValidationAndConsistency:
         
         # Verificar que totales siguen siendo correctos
         total_controls = sum(data["total"] for data in coverage_by_standard.values())
-        assert total_controls == 332  # Valor real actual (90+35+108+59+40)
+        assert total_controls == 316  # Valor real actual (94+35+108+59+20)
 
 
 if __name__ == "__main__":

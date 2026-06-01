@@ -126,10 +126,10 @@ try:
     # Ejecutar tests de funciones
     test_cases = [
         ("V2.1.1", True),
-        ("MSTG-AUTH-1", True),
+        ("AUTH-1", True),
         ("ID.AM-1", True), 
         ("A.5.1.1", True),
-        ("SBS-2137-1", True),
+        ("SBS-504-1", True),
         ("INVALID-TAG-123", False),
         ("asvs-v2.1.1", True),  # Con normalización
     ]

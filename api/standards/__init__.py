@@ -89,12 +89,12 @@ for standard_name in STANDARDS_MAP.keys():
 
 # STRIDE Control Examples — one real tag per relevant standard per category
 STRIDE_CONTROL_EXAMPLES = {
-    "SPOOFING": ["V2.1.1", "V2.2.1", "AUTH-1", "A.9.1.1", "PR.AC-1", "SBS-2158-5"],
-    "TAMPERING": ["V4.1.1", "V4.2.1", "CODE-1", "A.8.2.1", "PR.DS-6", "SBS-2158-7"],
-    "REPUDIATION": ["V3.1.1", "V3.2.1", "A.9.4.2", "PR.PT-1", "SBS-2158-8"],
-    "INFORMATION_DISCLOSURE": ["V2.1.2", "V2.1.3", "STORAGE-1", "A.9.4.1", "PR.DS-1", "SBS-2158-4"],
-    "DENIAL_OF_SERVICE": ["V1.1.1", "V1.2.1", "A.11.2.4", "PR.DS-4", "SBS-2167-8"],
-    "ELEVATION_OF_PRIVILEGE": ["V4.1.1", "V4.2.1", "A.9.2.3", "PR.AC-4", "SBS-2158-6"],
+    "SPOOFING": ["V2.1.1", "V2.2.1", "AUTH-1", "A.9.1.1", "PR.AC-1", "SBS-504-8"],
+    "TAMPERING": ["V4.1.1", "V4.2.1", "CODE-1", "A.8.2.1", "PR.DS-6", "SBS-504-9"],
+    "REPUDIATION": ["V3.1.1", "V3.2.1", "A.9.4.2", "PR.PT-1", "SBS-504-13"],
+    "INFORMATION_DISCLOSURE": ["V2.1.2", "V2.1.3", "STORAGE-1", "A.9.4.1", "PR.DS-1", "SBS-504-11"],
+    "DENIAL_OF_SERVICE": ["V1.1.1", "V1.2.1", "A.11.2.4", "PR.DS-4", "SBS-504-18"],
+    "ELEVATION_OF_PRIVILEGE": ["V4.1.1", "V4.2.1", "A.9.2.3", "PR.AC-4", "SBS-504-8"],
 }
 
 # =====================================================

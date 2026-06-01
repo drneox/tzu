@@ -124,10 +124,10 @@ try:
     print("\n1️⃣ Test de validación de tags")
     test_tags = [
         ("V2.1.1", True),
-        ("MSTG-AUTH-1", True), 
+        ("AUTH-1", True), 
         ("ID.AM-1", True),
         ("A.5.1.1", True),
-        ("SBS-2137-1", True),
+        ("SBS-504-1", True),
         ("INVALID-TAG", False)
     ]
     
