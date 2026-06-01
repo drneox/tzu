@@ -4,7 +4,7 @@ import os
 from any_llm import completion
 import control_tags
 import standards
-from standards import validate_and_correct_control_tags
+from standards import validate_and_correct_control_tags, get_standards_catalog_for_prompt, rag_lite_suggest, format_rag_lite_for_prompt
 from stride_validator import get_valid_stride_categories
 
 # Docker Compose pasa las variables de entorno automáticamente
@@ -44,8 +44,12 @@ def clientAI(content, content_type="image"):
 
     # Generar información dinámica sobre estándares disponibles
     available_standards = standards.get_available_standards()
-    standards_list = ", ".join(available_standards)
-    standards_info = f"The system includes {len(standards.ALL_CONTROLS)} security controls from  {len(available_standards)} international standards: {standards_list}."
+    standards_catalog = get_standards_catalog_for_prompt()
+
+    # RAG lite: pre-filtrar controles relevantes para el contexto actual
+    rag_context = content if content_type == "text" else ""
+    rag_results = rag_lite_suggest(rag_context, top_n_per_standard=4)
+    rag_block = format_rag_lite_for_prompt(rag_results)
 
     # Construir ejemplos para el prompt
     examples_text = ""
@@ -77,13 +81,16 @@ Important requirements:
 - Use ONLY the allowed numeric values for OWASP Risk Rating factors (no decimals, no values outside the list).
 - Output MUST be in **Spanish** and ONLY in JSON format.
 
-Control Tags Guidelines:
-{standards_info}
+Control Tags Guidelines — use ONLY these standards and formats:
+{standards_catalog}
 
 - Select controls that are SPECIFIC and MATCH the remediation described.
 - Use a diversity of standards depending on the threat type.
 - Examples:
 {examples_text}
+
+Controles más relevantes para este análisis — prioriza estos en tus selecciones:
+{rag_block}
 
 Remediation Format:
 - Write clear, actionable mitigation steps without control references in the text.

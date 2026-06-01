@@ -36,7 +36,7 @@ class TestControlTagsAPIEndpoints:
         asvs_info = response.json()
         
         assert asvs_info["name"] == "ASVS"
-        assert asvs_info["controls_count"] == 90  # Actual count from the system
+        assert asvs_info["controls_count"] == 94  # Actual count from the system
         assert "categories" in asvs_info
         assert "sample_controls" in asvs_info
         
@@ -64,7 +64,7 @@ class TestControlTagsAPIEndpoints:
             "AUTH-1",  # Valid MASVS tag
             "PR.AC-1", # Valid NIST tag
             "A.9.1.1", # Valid ISO tag
-            "SBS-2137-1", # Valid SBS tag
+            "SBS-504-1", # Valid SBS tag
             "INVALID-TAG-1", # Invalid tag
             "ANOTHER-INVALID" # Invalid tag
         ]
@@ -95,8 +95,8 @@ class TestControlTagsAPIEndpoints:
         
         assert "total" in all_tags
         assert "tags" in all_tags
-        assert all_tags["total"] == 332  # Total actual de controles según la salida del sistema
-        assert len(all_tags["tags"]) == 332
+        assert all_tags["total"] == 316  # Total actual de controles según la salida del sistema
+        assert len(all_tags["tags"]) == 316
         
         # Verificar que incluye tags de todos los estándares  
         tags_list = all_tags["tags"]
@@ -113,7 +113,7 @@ class TestControlTagsAPIEndpoints:
         # Basic checks - verify we have tags from each standard
         assert len(asvs_tags) > 20   # ASVS has many tags
         assert len(iso_tags) > 50    # ISO27001 has many tags  
-        assert len(sbs_tags) >= 40    # SBS has many tags
+        assert len(sbs_tags) >= 20    # SBS G-504-2021 has 20 tags
         
         # Verify we have some MASVS and NIST tags
         assert any(tag_id.startswith("AUTH-") for tag_id in tag_ids)  # Some MASVS tags

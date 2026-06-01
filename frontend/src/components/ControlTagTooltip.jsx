@@ -60,9 +60,13 @@ const ControlTagTooltip = ({ children, tagDetails, isOpen, ...tooltipProps }) =>
         )}
 
         {/* Descripción */}
-        {description && (
+        {description ? (
           <Text fontSize="xs" color="gray.200" lineHeight="1.4">
             {description}
+          </Text>
+        ) : (
+          <Text fontSize="xs" color="gray.400" lineHeight="1.4" fontStyle="italic">
+            Descripción no disponible en el catálogo local.
           </Text>
         )}
       </VStack>

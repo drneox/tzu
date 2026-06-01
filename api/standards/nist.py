@@ -1,4 +1,8 @@
 # Controles NIST Cybersecurity Framework
+# Versión: CSF v1.1 (NIST.IR.8183). Formato de IDs: XX.YY-N (ej. PR.AC-1)
+# NOTA: No incluye controles SP 800-53. Para SP 800-53 use IDs tipo SC-8, AC-2.
+
+VERSION = "CSF 1.1"
 
 NIST_CONTROLS = {
     # IDENTIFY (ID)

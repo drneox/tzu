@@ -17,6 +17,7 @@ import './App.css';
 
 // Context de autenticación
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { ControlTagsCatalogProvider } from './context/ControlTagsCatalogContext';
 import ProtectedRoute from './components/ProtectedRoute';
 
 // Componentes de autenticación
@@ -172,9 +173,11 @@ function App() {
   return (
     <ChakraProvider>
       <AuthProvider>
-        <Router>
-          <AppContent />
-        </Router>
+        <ControlTagsCatalogProvider>
+          <Router>
+            <AppContent />
+          </Router>
+        </ControlTagsCatalogProvider>
       </AuthProvider>
     </ChakraProvider>
   );

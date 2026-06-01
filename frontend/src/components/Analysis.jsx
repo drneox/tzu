@@ -120,11 +120,7 @@ const Analysis = () => {
         const threat = threats.find(t => t.id === threatId);
         const isRemediationApplied = threat?.remediation?.status === true;
         if (isRemediationApplied) {
-          const residual = residualRisks[threatId];
-          // Si no hay residual definido, mostrar el inherente (no inventar un valor)
-          return (residual !== null && residual !== undefined)
-            ? getRiskValue(threatId, 'residual')
-            : getRiskValue(threatId, 'inherent');
+          return getRiskValue(threatId, 'residual');
         }
         return getRiskValue(threatId, 'inherent');
       }

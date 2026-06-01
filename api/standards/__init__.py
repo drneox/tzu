@@ -22,12 +22,13 @@ current_dir = Path(__file__).parent
 ALL_CONTROLS = {}
 STANDARDS_MAP = {}
 TAGS_MAP = {}
+STANDARDS_VERSIONS = {}  # standard_name -> version string
 
 def _load_standards_automatically():
     """
     Automatically loads all standards from .py files in the standards/ folder
     """
-    global ALL_CONTROLS, STANDARDS_MAP, TAGS_MAP
+    global ALL_CONTROLS, STANDARDS_MAP, TAGS_MAP, STANDARDS_VERSIONS
     
     # Find all .py files except __init__.py
     standard_files = [f for f in os.listdir(current_dir) 
@@ -51,6 +52,10 @@ def _load_standards_automatically():
             # Check if the {NAME}_CONTROLS variable exists
             if hasattr(module, controls_var_name):
                 controls = getattr(module, controls_var_name)
+                
+                # Load version if defined in the module
+                if hasattr(module, 'VERSION'):
+                    STANDARDS_VERSIONS[standard_name] = module.VERSION
                 
                 # Add to standards mapping
                 STANDARDS_MAP[standard_name] = controls
@@ -84,12 +89,12 @@ for standard_name in STANDARDS_MAP.keys():
 
 # STRIDE Control Examples — one real tag per relevant standard per category
 STRIDE_CONTROL_EXAMPLES = {
-    "SPOOFING": ["V2.1.1", "V2.2.1", "AUTH-1", "A.9.1.1", "PR.AC-1", "SBS-2158-5"],
-    "TAMPERING": ["V4.1.1", "V4.2.1", "CODE-1", "A.8.2.1", "PR.DS-6", "SBS-2158-7"],
-    "REPUDIATION": ["V3.1.1", "V3.2.1", "A.9.4.2", "PR.PT-1", "SBS-2158-8"],
-    "INFORMATION_DISCLOSURE": ["V2.1.2", "V2.1.3", "STORAGE-1", "A.9.4.1", "PR.DS-1", "SBS-2158-4"],
-    "DENIAL_OF_SERVICE": ["V1.1.1", "V1.2.1", "A.11.2.4", "PR.DS-4", "SBS-2167-8"],
-    "ELEVATION_OF_PRIVILEGE": ["V4.1.1", "V4.2.1", "A.9.2.3", "PR.AC-4", "SBS-2158-6"],
+    "SPOOFING": ["V2.1.1", "V2.2.1", "AUTH-1", "A.9.1.1", "PR.AC-1", "SBS-504-8"],
+    "TAMPERING": ["V4.1.1", "V4.2.1", "CODE-1", "A.8.2.1", "PR.DS-6", "SBS-504-9"],
+    "REPUDIATION": ["V3.1.1", "V3.2.1", "A.9.4.2", "PR.PT-1", "SBS-504-13"],
+    "INFORMATION_DISCLOSURE": ["V2.1.2", "V2.1.3", "STORAGE-1", "A.9.4.1", "PR.DS-1", "SBS-504-11"],
+    "DENIAL_OF_SERVICE": ["V1.1.1", "V1.2.1", "A.11.2.4", "PR.DS-4", "SBS-504-18"],
+    "ELEVATION_OF_PRIVILEGE": ["V4.1.1", "V4.2.1", "A.9.2.3", "PR.AC-4", "SBS-504-8"],
 }
 
 # =====================================================
@@ -132,6 +137,13 @@ def normalize_tag_for_lookup(tag: str) -> str:
     m = _re_local.match(r'^(.+?)\s*\([^)]+\)\s*$', tag)
     if m:
         tag = m.group(1).strip()
+    # Normalize MASVS v2.0 prefix: "MASVS-AUTH-2" → "AUTH-2"
+    # Normalize MASVS v1.x prefix: "MSTG-AUTH-2" → "AUTH-2"
+    tag_upper = tag.upper()
+    if tag_upper.startswith("MASVS-"):
+        tag = tag[6:]
+    elif tag_upper.startswith("MSTG-"):
+        tag = tag[5:]
     return tag.upper()
 
 def get_tag_details(tag: str) -> dict:
@@ -361,6 +373,109 @@ def get_available_standards() -> list:
     """
     return list(STANDARDS_MAP.keys())
 
+def get_standards_catalog_for_prompt() -> str:
+    """
+    Returns a compact text block with version and format hints per standard for
+    inclusion in the AI system prompt (~100 extra tokens).  The goal is to
+    constrain the model to IDs that exist in the local catalog without listing
+    all controls explicitly.
+    """
+    # Format hints keyed by standard name
+    _FORMAT_HINTS = {
+        "ASVS":     "formato V{chapter}.{section}.{control} (ej. V2.1.1, V4.1.1, V7.5.3)",
+        "MASVS":    "formato CATEGORY-N o MASVS-CATEGORY-N (ej. AUTH-1, MASVS-AUTH-2, STORAGE-2, CODE-3)",
+        "NIST":     "SOLO formato CSF XX.YY-N (ej. PR.AC-1, DE.CM-1). "
+                    "NO usar controles SP 800-53 (SC-8, AC-2, IA-5, etc.)",
+        "ISO27001": "formato A.{seccion}.{subseccion}.{control} (ej. A.9.1.1, A.10.1.1)",
+        "SBS":      "SOLO controles de la Circular SBS G-504-2021 (Ciberseguridad). "
+                    "Formato SBS-504-{N} (ej. SBS-504-1, SBS-504-8, SBS-504-16)",
+    }
+
+    lines = []
+    for std_name in sorted(STANDARDS_MAP.keys()):
+        version = STANDARDS_VERSIONS.get(std_name, "")
+        count = len(STANDARDS_MAP[std_name])
+        version_label = f" v{version}" if version else ""
+        hint = _FORMAT_HINTS.get(std_name, "")
+        lines.append(f"- **{std_name}{version_label}** ({count} controles): {hint}")
+    return "\n".join(lines)
+
+def rag_lite_suggest(context_text: str, top_n_per_standard: int = 4) -> dict:
+    """
+    Keyword-based pre-filter (RAG lite): scores every control in ALL_CONTROLS
+    against the query text and returns the top N per standard.
+
+    No external dependencies — pure Python token-overlap scoring.
+
+    Args:
+        context_text: Combined threat context (system description, STRIDE hints, etc.)
+        top_n_per_standard: Number of controls to return per standard
+
+    Returns:
+        dict: {standard_name: [{"tag": formatted, "title": str}, ...]}
+    """
+    from collections import Counter
+
+    # Minimal stopwords (ES + EN)
+    _STOP = {
+        'de','la','el','en','y','a','los','del','se','las','por','un','para',
+        'con','una','su','al','lo','como','más','o','pero','sus','le','ha',
+        'me','si','sin','sobre','ser','e','no','que','es','son','muy','te',
+        'ya','ni','este','esta','son','fue','the','of','and','in','is','to',
+        'it','for','on','are','an','or','not','this','that','with','all',
+    }
+
+    def _tok(text):
+        return [t for t in re.findall(r'[a-záéíóúüña-z]{3,}', text.lower()) if t not in _STOP]
+
+    query_counter = Counter(_tok(context_text))
+    if not query_counter:
+        return {}
+
+    per_standard: dict = {}
+
+    for tag_id, entry in ALL_CONTROLS.items():
+        ctrl_text = f"{entry.get('title','')} {entry.get('description','')} {entry.get('category','')}"
+        ctrl_counter = Counter(_tok(ctrl_text))
+        score = sum(min(query_counter[t], ctrl_counter[t]) for t in query_counter if t in ctrl_counter)
+        if score == 0:
+            continue
+        # Normalize by sqrt of control length to avoid bias toward long descriptions
+        ctrl_len = sum(ctrl_counter.values()) or 1
+        norm_score = score / (ctrl_len ** 0.5)
+
+        std = get_standard_from_tag_id(tag_id)
+        if not std:
+            continue
+        per_standard.setdefault(std, []).append((norm_score, tag_id, entry))
+
+    result = {}
+    for std, items in per_standard.items():
+        items.sort(key=lambda x: x[0], reverse=True)
+        result[std] = [
+            {"tag": format_tag_for_display(tag_id) or tag_id, "title": entry.get("title", "")}
+            for _, tag_id, entry in items[:top_n_per_standard]
+        ]
+    return result
+
+
+def format_rag_lite_for_prompt(rag_results: dict) -> str:
+    """
+    Formats rag_lite_suggest() output as a compact block for prompt injection.
+    Each line: - **STD**: TAG (Title), TAG (Title), ...
+    """
+    if not rag_results:
+        return ""
+    lines = []
+    for std in sorted(rag_results.keys()):
+        controls = rag_results[std]
+        if not controls:
+            continue
+        tags_str = ", ".join(f"{c['tag']} ({c['title']})" for c in controls)
+        lines.append(f"- **{std}**: {tags_str}")
+    return "\n".join(lines)
+
+
 def get_standard_info(standard_name: str = None) -> dict:
     """
     Gets detailed information for a specific standard or all standards.
@@ -414,7 +529,7 @@ _STANDARD_PATTERNS = {
     "MASVS":    _re.compile(r'^[A-Z]+-\d+$'),
     "NIST":     _re.compile(r'^([A-Z]{2,3}\.[A-Z]{2,3}-\d+|[A-Z]{2,3}-\d+(\(\d+\))?)$'),  # CSF and SP 800-53
     "ISO27001": _re.compile(r'^(ISO27001-)?A\.\d+\.\d+\.\d+$'),
-    "SBS":      _re.compile(r'^SBS-\d{4}-\d+(\.\d+)?$'),  # Allow dotted subpoints like SBS-2158-3.2
+    "SBS":      _re.compile(r'^SBS-\d{3,4}-\d+(\.\d+)?$'),  # 3 o 4 dígitos: SBS-504-1, SBS-2158-1
 }
 
 
@@ -563,5 +678,6 @@ __all__ = [
     'normalize_tag_for_lookup', 'get_tag_details', 'format_tag_for_display',
     'validate_control_tag', 'get_suggested_tags_for_stride', 'categorize_tags',
     'search_predefined_tags', 'get_all_predefined_tags', 'get_tags_by_standard',
-    'get_available_standards', 'get_standard_info', 'validate_and_correct_control_tags'
+    'get_available_standards', 'get_standards_catalog_for_prompt',
+    'get_standard_info', 'validate_and_correct_control_tags'
 ]

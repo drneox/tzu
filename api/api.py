@@ -1292,7 +1292,7 @@ async def validate_control_tags_batch(
 )
 async def search_control_tags(
     query: str = Query("", min_length=0, description="Search query"),
-    limit: int = Query(50, ge=1, le=200, description="Maximum number of results"),
+    limit: int = Query(50, ge=1, le=500, description="Maximum number of results"),
     current_user: models.User = Depends(get_current_active_user)
 ):
     """

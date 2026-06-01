@@ -125,7 +125,7 @@ class TestControlTagsPerformance:
         
         # Crear lista grande de tags para validar
         large_tag_list = []
-        valid_tags = ["V2.1.1", "AUTH-1", "PR.AC-1", "A.5.1.1", "SBS-2137-1"]
+        valid_tags = ["V2.1.1", "AUTH-1", "PR.AC-1", "A.5.1.1", "SBS-504-1"]
         
         # Repetir tags válidos 10 veces (50 tags total) para no sobrecargar
         for _ in range(10):

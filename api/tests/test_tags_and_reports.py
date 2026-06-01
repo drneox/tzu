@@ -54,9 +54,9 @@ class TestTagsFunctionality:
             ("  A.5.1.1  ", "A.5.1.1"),
             
             # Casos SBS
-            ("SBS-2137-1", "SBS-2137-1"),
-            ("sbs-2137-1", "SBS-2137-1"),
-            ("  SBS-2137-1  ", "SBS-2137-1"),
+            ("SBS-504-1", "SBS-504-1"),
+            ("sbs-504-1", "SBS-504-1"),
+            ("  SBS-504-1  ", "SBS-504-1"),
         ]
         
         for input_tag, expected in test_cases:
@@ -71,7 +71,7 @@ class TestTagsFunctionality:
             "AUTH-1", "NETWORK-1",  # MASVS (updated format without MSTG prefix)
             "ID.AM-1", "PR.AC-1", "DE.AE-1",  # NIST
             "A.5.1.1", "A.8.1.1", "A.11.1.1",  # ISO27001 (A.11.1.1 existe, A.12.6.1 no)
-            "SBS-2137-1", "SBS-2137-5"  # SBS
+            "SBS-504-1", "SBS-504-5"  # SBS
         ]
         
         for tag in valid_tags:
@@ -127,7 +127,7 @@ class TestTagsFunctionality:
             ("AUTH-1", "AUTH-1 (MASVS)"),  # Updated MASVS format
             ("ID.AM-1", "ID.AM-1 (NIST)"),
             ("A.5.1.1", "A.5.1.1 (ISO27001)"),
-            ("SBS-2137-1", "SBS-2137-1 (SBS)"),
+            ("SBS-504-1", "SBS-504-1 (SBS)"),
         ]
         
         for tag, expected_formatted in test_cases:
@@ -137,7 +137,7 @@ class TestTagsFunctionality:
     def test_tag_details_completeness(self):
         """Test de completitud de detalles de tags"""
         # Seleccionar algunos tags conocidos de cada estándar (updated MASVS format)
-        sample_tags = ["V2.1.1", "AUTH-1", "ID.AM-1", "A.5.1.1", "SBS-2137-1"]
+        sample_tags = ["V2.1.1", "AUTH-1", "ID.AM-1", "A.5.1.1", "SBS-504-1"]
         
         for tag in sample_tags:
             details = get_tag_details(tag)
@@ -237,7 +237,7 @@ class TestReportsFunctionality:
         assert len(standards) > 0
         
         # Test categorización de tags
-        sample_tags = ["V2.1.1", "MSTG-AUTH-1", "ID.AM-1"]
+        sample_tags = ["V2.1.1", "AUTH-1", "ID.AM-1"]
         categorized = categorize_tags(sample_tags)
         assert len(categorized) > 0
         
@@ -248,7 +248,7 @@ class TestReportsFunctionality:
             {
                 "id": 1,
                 "title": "Threat 1",
-                "control_tags": ["V2.1.1", "MSTG-AUTH-1"],
+                "control_tags": ["V2.1.1", "AUTH-1"],
                 "severity": "High"
             },
             {
@@ -260,7 +260,7 @@ class TestReportsFunctionality:
             {
                 "id": 3,
                 "title": "Threat 3", 
-                "control_tags": ["SBS-2137-1"],
+                "control_tags": ["SBS-504-1"],
                 "severity": "Low"
             }
         ]
@@ -405,9 +405,9 @@ class TestTagsIntegrationWithThreats:
         threats_db = [
             {"id": 1, "title": "Auth Bypass", "control_tags": ["V2.1.1", "V2.1.2"]},
             {"id": 2, "title": "Data Leak", "control_tags": ["V7.1.1", "A.13.1.1"]},
-            {"id": 3, "title": "Mobile Auth", "control_tags": ["MSTG-AUTH-1", "MSTG-AUTH-2"]},
+            {"id": 3, "title": "Mobile Auth", "control_tags": ["AUTH-1", "AUTH-2"]},
             {"id": 4, "title": "Network Attack", "control_tags": ["ID.AM-1", "PR.AC-1"]},
-            {"id": 5, "title": "Compliance Issue", "control_tags": ["SBS-2137-1", "SBS-2137-2"]}
+            {"id": 5, "title": "Compliance Issue", "control_tags": ["SBS-504-1", "SBS-504-2"]}
         ]
         
         # Test filtrado por estándar ASVS
@@ -415,7 +415,7 @@ class TestTagsIntegrationWithThreats:
         assert len(asvs_threats) == 2
         
         # Test filtrado por estándar MASVS
-        masvs_threats = [t for t in threats_db if any(tag.startswith("MSTG") for tag in t["control_tags"])]
+        masvs_threats = [t for t in threats_db if any(tag.startswith("AUTH-") or tag.startswith("MASVS-") for tag in t["control_tags"])]
         assert len(masvs_threats) == 1
         
         # Test filtrado por tag específico

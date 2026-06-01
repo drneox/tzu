@@ -22,6 +22,8 @@ Control Categories (Annex A):
 - A.18: Compliance
 """
 
+VERSION = "2013"
+
 # Controles ISO 27001
 ISO27001_CONTROLS = {
     # A.5: Information Security Policies
