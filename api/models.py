@@ -195,6 +195,31 @@ class Threat(Base):
             return "UNKNOWN"
     
     
+class Project(Base):
+    __tablename__ = "projects"
+    id = Column(UUID, primary_key=True, default=uuid.uuid4)
+    name = Column(String, nullable=False)
+    description = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    created_by = Column(UUID, ForeignKey("users.id"), nullable=False)
+
+    creator = relationship("User", foreign_keys=[created_by], back_populates="projects")
+    members = relationship("ProjectMember", back_populates="project", cascade="all, delete-orphan")
+    information_systems = relationship("InformationSystem", back_populates="project")
+
+
+class ProjectMember(Base):
+    __tablename__ = "project_members"
+    project_id = Column(UUID, ForeignKey("projects.id"), primary_key=True)
+    user_id = Column(UUID, ForeignKey("users.id"), primary_key=True)
+    added_at = Column(DateTime, default=datetime.datetime.utcnow)
+    added_by = Column(UUID, ForeignKey("users.id"), nullable=True)
+
+    project = relationship("Project", back_populates="members")
+    user = relationship("User", foreign_keys=[user_id], back_populates="project_memberships")
+    adder = relationship("User", foreign_keys=[added_by])
+
+
 class InformationSystem(Base):
     __tablename__ = "information_systems"
     id = Column(UUID, primary_key=True, default=uuid.uuid4)
@@ -202,9 +227,16 @@ class InformationSystem(Base):
     description = Column(Text)
     datetime = Column(DateTime, default=datetime.datetime.utcnow)
     diagram = Column(Text)
+    diagram_input_type = Column(String, nullable=True)
     created_by = Column(UUID, ForeignKey("users.id"), nullable=True)
+    project_id = Column(UUID, ForeignKey("projects.id", ondelete="SET NULL"), nullable=True)
 
     threats = relationship("Threat", back_populates="information_system", cascade="all, delete-orphan")
+    project = relationship("Project", back_populates="information_systems")
+
+    @property
+    def project_name(self):
+        return self.project.name if self.project else None
 
 
 class UseCase(Base):
@@ -228,6 +260,9 @@ class User(Base):
     is_active = Column(Boolean, default=True)
     is_admin = Column(Boolean, default=False)
     role = Column(String, default="reader")
+
+    projects = relationship("Project", back_populates="creator", foreign_keys="Project.created_by")
+    project_memberships = relationship("ProjectMember", back_populates="user", foreign_keys="ProjectMember.user_id")
 
 
 class AuditLog(Base):

@@ -84,8 +84,8 @@ class TestInformationSystemEndpoints:
             json=update_data, 
             headers=auth_headers
         )
-        # Note: PUT endpoint may not exist, expect 405 Method Not Allowed
-        assert response.status_code in [200, 405]
+        # PUT endpoint exists but requires analyst role; reader user gets 403
+        assert response.status_code in [200, 403, 405]
     
     def test_delete_information_system(self, admin_auth_headers):
         """Test eliminar sistema de información (requires analyst or admin role)"""

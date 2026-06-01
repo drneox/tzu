@@ -348,6 +348,21 @@
           "critical": "Critical"
         }
       }
-    }
-  }
+    }  },
+  "projects": {
+    "title": "Projects",
+    "noProject": "No project",
+    "createNew": "Create \"{{name}}\"",
+    "namePlaceholder": "Select or create project...",
+    "description": "Description",
+    "members": "Members",
+    "addMember": "Add member",
+    "removeMember": "Remove member",
+    "analyses": "Analyses",
+    "deleteConfirm": "Delete this project?",
+    "deleted": "Project deleted",
+    "created": "Project created",
+    "updated": "Project updated",
+    "filterAll": "All projects",
+    "project": "Project"  }
 }

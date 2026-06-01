@@ -8,11 +8,15 @@ import json
 class InformationSystemCreate(BaseModel):
     title: str
     description: str | None = None
+    project_id: Optional[UUID] = None
+    project_name: Optional[str] = None
 
 class InformationSystemBase(BaseModel):
     id: UUID
     title: str
     description: str | None = None
+    project_id: Optional[UUID] = None
+    project_name: Optional[str] = None
   
 
 class InformationSystemBaseCreate(InformationSystemCreate):
@@ -195,4 +199,60 @@ class AuditLogEntry(BaseModel):
     performed_by_id: UUID
     timestamp: datetime
     detail: Optional[str] = None
-    password: str
+
+
+# =====================================================
+# PROJECT SCHEMAS
+# =====================================================
+
+class ProjectBase(BaseModel):
+    name: str
+    description: Optional[str] = None
+
+
+class ProjectCreate(ProjectBase):
+    pass
+
+
+class ProjectUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+
+
+class ProjectResponse(ProjectBase):
+    model_config = {"from_attributes": True}
+
+    id: UUID
+    created_at: datetime
+    created_by: UUID
+
+
+class ProjectWithCounts(ProjectResponse):
+    analysis_count: int = 0
+    member_count: int = 0
+
+
+class ProjectMemberAdd(BaseModel):
+    user_id: UUID
+
+
+class ProjectMemberBase(BaseModel):
+    model_config = {"from_attributes": True}
+
+    user_id: UUID
+    username: str
+    name: str
+    role: str
+    added_at: datetime
+    added_by: Optional[UUID] = None
+
+
+# =====================================================
+# INFORMATION SYSTEM UPDATE SCHEMA
+# =====================================================
+
+class InformationSystemUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    project_id: Optional[UUID] = None
+    project_name_inline: Optional[str] = None  # Creates a new project inline if provided

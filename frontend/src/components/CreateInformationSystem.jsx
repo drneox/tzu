@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Flex, Box, Input, Button, Textarea, Heading, useToast, Alert, AlertIcon } from "@chakra-ui/react";
+import { Flex, Box, Input, Button, Textarea, Heading, useToast, Alert, AlertIcon, FormLabel } from "@chakra-ui/react";
 import { createInformationSystem } from "../services";
 import { useLocalization } from '../hooks/useLocalization';
 import { useAuth } from '../context/AuthContext';
+import ProjectCombobox from './ProjectCombobox';
 
 const CreateInformationSystem = () => {
   const { t } = useLocalization();
@@ -11,14 +12,20 @@ const CreateInformationSystem = () => {
   const toast = useToast();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [diagram, setDiagram] = useState(null);
+  const [project, setProject] = useState(null);
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      // Enviar solo los datos, sin imagen
       const data = { title, description };
+      if (project) {
+        if (project.isNew) {
+          data.project_name = project.name;
+        } else {
+          data.project_id = project.id;
+        }
+      }
       const res = await createInformationSystem(data);
       const id = res.data.id;
       
@@ -32,7 +39,7 @@ const CreateInformationSystem = () => {
         variant: 'left-accent'
       });
       
-      navigate(`/upload/${id}`); // Redirige a la subida de imagen
+      navigate(`/upload/${id}`);
     } catch (error) {
       toast({
         title: t?.ui?.form?.error_creating_title || "Error",
@@ -73,6 +80,14 @@ const CreateInformationSystem = () => {
             required
             isDisabled={!canWrite}
           />
+          <FormLabel fontSize="sm" mb={1}>{t?.projects?.project || 'Project'}</FormLabel>
+          <Box mb={4}>
+            <ProjectCombobox
+              value={project}
+              onChange={setProject}
+              isDisabled={!canWrite}
+            />
+          </Box>
           {canWrite && (
             <Button type="submit" colorScheme="teal" width="full">{t.ui.form.create_button}</Button>
           )}

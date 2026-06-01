@@ -34,12 +34,13 @@ const NavLink = ({ to, children, exact }) => {
 
 const Navigation = () => {
   const { t } = useLocalization();
-  const { isAdmin } = useAuth();
+  const { isAdmin, canWrite } = useAuth();
 
   return (
     <Flex {...navBarStyle}>
       <NavLink to="/create">{t.ui.menu.new_analysis}</NavLink>
       <NavLink to="/" exact>{t.ui.menu.archive}</NavLink>
+      {canWrite && <NavLink to="/projects">{t?.projects?.title || 'Proyectos'}</NavLink>}
       <NavLink to="/reports">{t.ui.menu.reports}</NavLink>
       {isAdmin && <NavLink to="/users">{t.ui.menu.users}</NavLink>}
     </Flex>

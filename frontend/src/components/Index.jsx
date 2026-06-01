@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {getInformationSystems} from "../services";
+import { getProjects } from "../services/projectService";
 import { 
   Flex, 
   TableContainer, 
@@ -15,7 +16,8 @@ import {
   Text,
   Box,
   Select,
-  Spinner
+  Spinner,
+  Badge
 } from "@chakra-ui/react";
 import { ChevronLeftIcon, ChevronRightIcon } from '@chakra-ui/icons';
 import { useLocalization } from '../hooks/useLocalization';
@@ -28,41 +30,33 @@ const Index = () => {
   const [totalSystems, setTotalSystems] = useState(0);
   const [pageSize, setPageSize] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
+  const [projects, setProjects] = useState([]);
+  const [selectedProjectId, setSelectedProjectId] = useState('');
 
-  const fetchData = async (page, size) => {
+  useEffect(() => {
+    getProjects().then((res) => setProjects(res.data)).catch(() => {});
+  }, []);
+
+  const fetchData = async (page, size, projectId) => {
     setIsLoading(true);
     try {
       const skip = (page - 1) * size;
-      const res = await getInformationSystems(skip, size);
+      const res = await getInformationSystems(skip, size, projectId || null);
       setServiceData(res.data);
       
-      // Actualizamos el total de sistemas usando el contador real de la API
       if (res.totalCount !== undefined) {
         setTotalSystems(res.totalCount);
-        console.log(`Total de sistemas obtenido de la API: ${res.totalCount}`);
-      }
-      // Como respaldo, estimamos el total basado en los datos recibidos
-      else if (res.data.length > 0) {
-        // Si estamos en la última página y hay menos registros que el tamaño de página
+      } else if (res.data.length > 0) {
         if (page > 1 && res.data.length < size) {
-          const newTotal = (page - 1) * size + res.data.length;
-          setTotalSystems(newTotal);
-          console.log(`Estimando total de sistemas: ${newTotal} (página incompleta)`);
+          setTotalSystems((page - 1) * size + res.data.length);
         } else if (page === 1 && res.data.length < size) {
           setTotalSystems(res.data.length);
-          console.log(`Estimando total de sistemas: ${res.data.length} (primera página)`);
         } else {
-          // En caso contrario, aumentamos el contador en cada llamada
-          const newTotal = Math.max(totalSystems, page * size + 1); // +1 para asegurar que haya otra página
-          setTotalSystems(newTotal);
-          console.log(`Estimando total de sistemas: ${newTotal} (página completa)`);
+          setTotalSystems(Math.max(totalSystems, page * size + 1));
         }
       } else {
-        // Si no hay datos, el total es 0
         setTotalSystems(0);
-        console.log('No hay sistemas disponibles');
       }
-      
     } catch (error) {
       console.error("Error al cargar los sistemas:", error);
     } finally {
@@ -70,32 +64,29 @@ const Index = () => {
     }
   };
 
-  // Calculamos el número total de páginas cuando cambia totalSystems o pageSize
   useEffect(() => {
     const calculatedPages = Math.max(1, Math.ceil(totalSystems / pageSize));
     setTotalPages(calculatedPages);
-    console.log(`Recalculando totalPages: ${calculatedPages} (totalSystems: ${totalSystems}, pageSize: ${pageSize})`);
   }, [totalSystems, pageSize]);
 
-  // Cargamos datos iniciales y cuando cambia la paginación
   useEffect(() => {
-    fetchData(currentPage, pageSize);
-  }, [currentPage, pageSize]);
+    fetchData(currentPage, pageSize, selectedProjectId);
+  }, [currentPage, pageSize, selectedProjectId]);
 
   const handlePageChange = (newPage) => {
-    // Asegurarse de que la página esté en el rango válido
     if (newPage >= 1 && newPage <= totalPages) {
-      console.log(`Cambiando a página ${newPage} de ${totalPages}`);
       setCurrentPage(newPage);
-    } else {
-      console.log(`Intento de cambiar a página inválida: ${newPage} (totalPages: ${totalPages})`);
     }
   };
 
   const handlePageSizeChange = (event) => {
-    const newSize = parseInt(event.target.value);
-    setPageSize(newSize);
-    setCurrentPage(1); // Volver a la primera página al cambiar el tamaño
+    setPageSize(parseInt(event.target.value));
+    setCurrentPage(1);
+  };
+
+  const handleProjectFilterChange = (event) => {
+    setSelectedProjectId(event.target.value);
+    setCurrentPage(1);
   };
 
   if (isLoading && serviceData.length === 0) {
@@ -116,19 +107,38 @@ const Index = () => {
       style={{ marginBottom: "60px" }}
     >
       <Box width="100%" maxWidth="1000px">
+        {/* Project filter */}
+        <Flex mb={3} align="center" gap={2}>
+          <Text fontSize="sm" fontWeight="medium" whiteSpace="nowrap">
+            {t?.projects?.project || 'Proyecto'}:
+          </Text>
+          <Select
+            value={selectedProjectId}
+            onChange={handleProjectFilterChange}
+            size="sm"
+            maxWidth="260px"
+          >
+            <option value="">{t?.projects?.filterAll || 'Todos los proyectos'}</option>
+            {projects.map((p) => (
+              <option key={p.id} value={p.id}>{p.name}</option>
+            ))}
+          </Select>
+        </Flex>
+
         <TableContainer>
           <Table border="2px solid gray" borderCollapse="collapse" variant='striped' colorScheme='gray' overflowX='auto' whiteSpace='normal' width="100%">
             <Thead>
               <Tr bg="blue.500" color="white" p="4">
                 <Th color="white" p="3" shadow="md">{t?.ui?.table?.title || 'Título'}</Th>
                 <Th color="white" p="3" shadow="md">{t?.ui?.table?.description || 'Descripción'}</Th>
+                <Th color="white" p="3" shadow="md">{t?.projects?.project || 'Proyecto'}</Th>
                 <Th color="white" p="3" shadow="md" maxWidth='180px'>{t?.ui?.table?.date || 'Fecha'}</Th>
               </Tr>
             </Thead>
             <Tbody>
               {serviceData.length === 0 ? (
                 <Tr>
-                  <Td colSpan={3} textAlign="center" py={6}>
+                  <Td colSpan={4} textAlign="center" py={6}>
                     {t?.ui?.no_systems || 'No hay sistemas disponibles'}
                   </Td>
                 </Tr>
@@ -139,6 +149,12 @@ const Index = () => {
                     <Tr key={data.id}>
                       <Td><Link to={`analysis/${data.id}`} style={{ color: 'blue.600', fontWeight: 'medium' }}>{String(data.title)}</Link></Td>
                       <Td>{data.description}</Td>
+                      <Td>
+                        {data.project_name
+                          ? <Badge colorScheme="blue" borderRadius="md" px={2}>{data.project_name}</Badge>
+                          : <Text color="gray.400" fontSize="sm">{t?.projects?.noProject || '—'}</Text>
+                        }
+                      </Td>
                       <Td>{dateTime}</Td>
                     </Tr>
                   );
@@ -146,7 +162,7 @@ const Index = () => {
               )}
               {isLoading && (
                 <Tr>
-                  <Td colSpan={3} textAlign="center" py={4}>
+                  <Td colSpan={4} textAlign="center" py={4}>
                     <Spinner size="sm" color="blue.500" mr={2} />
                     {t?.ui?.loading_more || 'Cargando más resultados...'}
                   </Td>

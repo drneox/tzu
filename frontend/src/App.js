@@ -33,6 +33,7 @@ import Reports from './components/Reports';
 import CreateInformationSystem from './components/CreateInformationSystem';
 import UploadDiagram from './components/UploadDiagram';
 import UserManagement from './components/UserManagement';
+import ProjectManager from './components/ProjectManager';
 
 // Componente AppContent - Contenido principal de la aplicación
 function AppContent() {
@@ -135,6 +136,15 @@ function AppContent() {
             element={
               <ProtectedRoute>
                 <UserManagement />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/projects"
+            element={
+              <ProtectedRoute>
+                <ProjectManager />
               </ProtectedRoute>
             }
           />
