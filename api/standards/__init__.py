@@ -439,12 +439,13 @@ def _detect_standard_from_pattern(tag_id: str) -> str:
 
 def _closest_sbs_tag(tag_id: str) -> str | None:
     """
-    Given an invalid SBS tag (e.g. 'SBS-2158-99' or 'SBS-2158-3.2'), tries to
-    find the closest valid SBS tag:
-    1. Strip dotted subpoints first: SBS-2158-3.2 → SBS-2158-3 (direct hit).
-    2. Same resolution number → pick the one with the nearest control number.
-    3. Any SBS tag → fallback to first available.
-    Returns a valid SBS tag_id or None.
+    Given an invalid SBS tag, tries to find the closest valid SBS tag.
+    Returns None if the resolution doesn't exist in our dict (caller will keep as-is).
+
+    Strategy:
+    1. Strip dotted subpoints: SBS-2158-3.2 → SBS-2158-3 (direct hit if it exists).
+    2. Same resolution → pick the one with the nearest control number.
+    3. If the resolution is not in our dict at all → return None (keep original tag).
     """
     sbs_tags = list(STANDARDS_MAP.get("SBS", {}).keys())
     if not sbs_tags:
@@ -470,12 +471,13 @@ def _closest_sbs_tag(tag_id: str) -> str | None:
             if tm and tm.group(1) == resolution:
                 same_res.append((int(tm.group(2)), t))
         if same_res:
-            # Return the tag with the closest control number
+            # Resolution exists in our dict → correct to nearest control number
             same_res.sort(key=lambda x: abs(x[0] - requested_num))
             return same_res[0][1]
+        # Resolution not in our dict → return None to keep the tag as-is
+        return None
 
-    # Fallback: return the first SBS tag
-    return sbs_tags[0]
+    return None
 
 
 def validate_and_correct_control_tags(tags: list) -> list:
@@ -513,18 +515,30 @@ def validate_and_correct_control_tags(tags: list) -> list:
                 result.append(formatted)
             continue
 
-        # 2. Detect standard from pattern
-        detected_std = _detect_standard_from_pattern(tag_id)
+        # 2. Determine effective standard, trusting the hint when provided.
+        # Without this, MAVSV's broad pattern ^[A-Z]+-\d+$ would match NIST SP 800-53
+        # tags like SC-8, AC-2, etc. before the NIST pattern is checked.
+        if standard_hint and standard_hint in _STANDARD_PATTERNS:
+            if _STANDARD_PATTERNS[standard_hint].match(tag_id):
+                detected_std = standard_hint  # hint is plausible — trust it
+            else:
+                detected_std = _detect_standard_from_pattern(tag_id)
+        else:
+            detected_std = _detect_standard_from_pattern(tag_id)
         effective_std = detected_std or standard_hint or ""
 
         if effective_std == "SBS":
-            # SBS is custom: must correct to a real tag
+            # SBS is custom: try to correct to a real tag
             corrected_id = _closest_sbs_tag(tag_id)
             if corrected_id:
+                # Known resolution: use the corrected tag from our dict
                 formatted = format_tag_for_display(corrected_id)
-                if formatted and formatted not in seen:
-                    seen.add(formatted)
-                    result.append(formatted)
+            else:
+                # Unknown resolution: keep as-is (like NIST SP 800-53 tags not in our dict)
+                formatted = f"{tag_id} (SBS)"
+            if formatted and formatted not in seen:
+                seen.add(formatted)
+                result.append(formatted)
         elif effective_std in ("ASVS", "NIST", "ISO27001", "MASVS"):
             # Well-known standard: accept the tag even if not in our mapping
             formatted = f"{tag_id} ({effective_std})"
