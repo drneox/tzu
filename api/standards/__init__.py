@@ -115,18 +115,24 @@ def normalize_tag_for_lookup(tag: str) -> str:
     """
     Simplified function for tag normalization.
     Standard files already have exact IDs as keys.
+    Strips the '(STANDARD)' suffix if present, e.g. 'A.9.2.4 (ISO27001)' → 'A.9.2.4'.
     
     Args:
         tag: Tag to normalize
     
     Returns:
-        str: Clean tag (only trim and uppercase)
+        str: Clean tag ID ready for dict lookup
     """
     if not tag or tag is None:
         return ""
     
-    # Only basic cleanup - files already have exact IDs
-    return tag.strip().upper()
+    tag = tag.strip()
+    # Strip standard suffix like " (ASVS)" or "(ISO27001)"
+    import re as _re_local
+    m = _re_local.match(r'^(.+?)\s*\([^)]+\)\s*$', tag)
+    if m:
+        tag = m.group(1).strip()
+    return tag.upper()
 
 def get_tag_details(tag: str) -> dict:
     """
@@ -406,9 +412,9 @@ import re as _re
 _STANDARD_PATTERNS = {
     "ASVS":     _re.compile(r'^V\d+\.\d+\.\d+$'),
     "MASVS":    _re.compile(r'^[A-Z]+-\d+$'),
-    "NIST":     _re.compile(r'^[A-Z]{2,3}\.[A-Z]{2,3}-\d+$'),
+    "NIST":     _re.compile(r'^([A-Z]{2,3}\.[A-Z]{2,3}-\d+|[A-Z]{2,3}-\d+(\(\d+\))?)$'),  # CSF and SP 800-53
     "ISO27001": _re.compile(r'^(ISO27001-)?A\.\d+\.\d+\.\d+$'),
-    "SBS":      _re.compile(r'^SBS-\d{4}-\d+$'),
+    "SBS":      _re.compile(r'^SBS-\d{4}-\d+(\.\d+)?$'),  # Allow dotted subpoints like SBS-2158-3.2
 }
 
 
@@ -433,18 +439,27 @@ def _detect_standard_from_pattern(tag_id: str) -> str:
 
 def _closest_sbs_tag(tag_id: str) -> str | None:
     """
-    Given an invalid SBS tag (e.g. 'SBS-2158-99'), tries to find the closest
-    valid SBS tag:
-    1. Same resolution number → pick the one with the nearest control number.
-    2. Any SBS tag → fallback to first available.
+    Given an invalid SBS tag (e.g. 'SBS-2158-99' or 'SBS-2158-3.2'), tries to
+    find the closest valid SBS tag:
+    1. Strip dotted subpoints first: SBS-2158-3.2 → SBS-2158-3 (direct hit).
+    2. Same resolution number → pick the one with the nearest control number.
+    3. Any SBS tag → fallback to first available.
     Returns a valid SBS tag_id or None.
     """
     sbs_tags = list(STANDARDS_MAP.get("SBS", {}).keys())
     if not sbs_tags:
         return None
 
-    # Extract resolution number from the requested tag
-    m = _re.match(r'^SBS-(\d+)-(\d+)$', tag_id)
+    # Strip dotted subpoints: SBS-2158-3.2 → SBS-2158-3
+    stripped = _re.sub(r'^(SBS-\d+-\d+)\.\d+$', r'\1', tag_id)
+    if stripped in STANDARDS_MAP.get("SBS", {}):
+        return stripped  # Direct hit after stripping subpoint
+
+    # Use stripped form for further matching (or original if unchanged)
+    candidate = stripped if stripped != tag_id else tag_id
+
+    # Extract resolution and control number
+    m = _re.match(r'^SBS-(\d+)-(\d+)$', candidate)
     if m:
         resolution = m.group(1)
         requested_num = int(m.group(2))
