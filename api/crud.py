@@ -356,8 +356,11 @@ def update_threat_risk(db: Session, threat_id: str, data: dict):
         db.refresh(remediation)
     return threat
 
-def get_information_systems(db: Session,skip: int = 0, limit: int = 100):
-    return db.query(models.InformationSystem).order_by(models.InformationSystem.datetime.desc()).offset(skip).limit(limit).all()
+def get_information_systems(db: Session, skip: int = 0, limit: int = 100, project_id: Optional[UUID] = None):
+    query = db.query(models.InformationSystem)
+    if project_id is not None:
+        query = query.filter(models.InformationSystem.project_id == project_id)
+    return query.order_by(models.InformationSystem.datetime.desc()).offset(skip).limit(limit).all()
  
 def get_information_system(db: Session, information_system_id: str):
     return db.query(models.InformationSystem).options(
@@ -371,12 +374,25 @@ def get_threats_by_information_system(db: Session, information_system_id: str):
         joinedload(models.Threat.remediation)
     ).filter(models.Threat.information_system_id == UUID(information_system_id)).order_by(models.Threat.created_at.desc()).all()
  
-def create_information_system(db: Session, information_system: schemas.InformationSystem, created_by=None):
-    db_information_system = models.InformationSystem(title=information_system.title,
-                                                    description=information_system.description,
-                                                    created_by=created_by
-                                                    )
-    
+def create_information_system(db: Session, information_system: schemas.InformationSystemCreate, created_by=None):
+    project_id = information_system.project_id
+    # If project_name is provided (and no project_id), always create a new project
+    if information_system.project_name and not project_id:
+        if created_by is None:
+            raise ValueError("created_by is required when project_name is provided")
+        new_project = create_project_by_name(
+            db,
+            name=information_system.project_name,
+            created_by=created_by
+        )
+        project_id = new_project.id
+
+    db_information_system = models.InformationSystem(
+        title=information_system.title,
+        description=information_system.description,
+        created_by=created_by,
+        project_id=project_id,
+    )
     db.add(db_information_system)
     db.commit()
     db.refresh(db_information_system)
@@ -621,3 +637,208 @@ def delete_threat(db: Session, threat_id: str):
     db.commit()
     return True
 
+
+
+# =====================================================
+# PROJECT CRUD FUNCTIONS
+# =====================================================
+
+def create_project(db: Session, project: schemas.ProjectCreate, created_by) -> models.Project:
+    db_project = models.Project(
+        name=project.name.strip(),
+        description=project.description,
+        created_by=created_by,
+    )
+    db.add(db_project)
+    db.commit()
+    db.refresh(db_project)
+    return db_project
+
+
+def create_project_by_name(db: Session, name: str, created_by) -> models.Project:
+    """Always creates a new project with the given name (no lookup). See research.md Decision 4."""
+    db_project = models.Project(
+        name=name.strip(),
+        created_by=created_by,
+    )
+    db.add(db_project)
+    db.commit()
+    db.refresh(db_project)
+    return db_project
+
+
+def get_projects(db: Session, skip: int = 0, limit: int = 100):
+    from sqlalchemy import func, select
+    analysis_count_sub = (
+        select(func.count())
+        .where(models.InformationSystem.project_id == models.Project.id)
+        .correlate(models.Project)
+        .scalar_subquery()
+    )
+    member_count_sub = (
+        select(func.count())
+        .where(models.ProjectMember.project_id == models.Project.id)
+        .correlate(models.Project)
+        .scalar_subquery()
+    )
+    rows = (
+        db.query(
+            models.Project,
+            analysis_count_sub.label("analysis_count"),
+            member_count_sub.label("member_count"),
+        )
+        .order_by(models.Project.created_at.desc())
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
+    results = []
+    for project, ac, mc in rows:
+        project._analysis_count = ac
+        project._member_count = mc
+        results.append(project)
+    return results
+
+
+def get_project(db: Session, project_id) -> Optional[models.Project]:
+    from sqlalchemy import func, select
+    project = db.query(models.Project).filter(models.Project.id == project_id).first()
+    if project is None:
+        return None
+    project._analysis_count = db.query(models.InformationSystem).filter(
+        models.InformationSystem.project_id == project_id
+    ).count()
+    project._member_count = db.query(models.ProjectMember).filter(
+        models.ProjectMember.project_id == project_id
+    ).count()
+    return project
+
+
+def update_project(db: Session, project_id, data: schemas.ProjectUpdate, current_user: models.User) -> Optional[models.Project]:
+    project = db.query(models.Project).filter(models.Project.id == project_id).first()
+    if project is None:
+        return None, "not_found"
+    if str(project.created_by) != str(current_user.id) and current_user.role != "admin":
+        return None, "forbidden"
+    if data.name is not None:
+        name = data.name.strip()
+        if not name:
+            return None, "empty_name"
+        project.name = name
+    if data.description is not None:
+        project.description = data.description
+    db.commit()
+    db.refresh(project)
+    return project, None
+
+
+def delete_project(db: Session, project_id, current_user: models.User):
+    project = db.query(models.Project).filter(models.Project.id == project_id).first()
+    if project is None:
+        return False, "not_found"
+    if str(project.created_by) != str(current_user.id) and current_user.role != "admin":
+        return False, "forbidden"
+    db.delete(project)
+    db.commit()
+    return True, None
+
+
+def update_information_system(db: Session, information_system_id: str, data: schemas.InformationSystemUpdate, current_user: models.User):
+    system = db.query(models.InformationSystem).filter(
+        models.InformationSystem.id == UUID(information_system_id)
+    ).first()
+    if system is None:
+        return None, "not_found"
+    if str(system.created_by) != str(current_user.id) and current_user.role != "admin":
+        return None, "forbidden"
+    if data.title is not None:
+        system.title = data.title
+    if data.description is not None:
+        system.description = data.description
+    if data.project_name_inline:
+        new_project = create_project_by_name(db, name=data.project_name_inline, created_by=current_user.id)
+        system.project_id = new_project.id
+    elif "project_id" in data.model_fields_set:
+        system.project_id = data.project_id
+    db.commit()
+    db.refresh(system)
+    return system, None
+
+
+# =====================================================
+# PROJECT MEMBER CRUD FUNCTIONS
+# =====================================================
+
+def get_project_members(db: Session, project_id, current_user: models.User):
+    project = db.query(models.Project).filter(models.Project.id == project_id).first()
+    if project is None:
+        return None, "not_found"
+    if str(project.created_by) != str(current_user.id) and current_user.role != "admin":
+        return None, "forbidden"
+    members = (
+        db.query(models.ProjectMember, models.User)
+        .join(models.User, models.User.id == models.ProjectMember.user_id)
+        .filter(models.ProjectMember.project_id == project_id)
+        .all()
+    )
+    result = []
+    for membership, user in members:
+        result.append({
+            "user_id": user.id,
+            "username": user.username,
+            "name": user.name,
+            "role": user.role,
+            "added_at": membership.added_at,
+            "added_by": membership.added_by,
+        })
+    return result, None
+
+
+def add_project_member(db: Session, project_id, user_id, added_by, current_user: models.User):
+    project = db.query(models.Project).filter(models.Project.id == project_id).first()
+    if project is None:
+        return None, "not_found"
+    if str(project.created_by) != str(current_user.id) and current_user.role != "admin":
+        return None, "forbidden"
+    target_user = db.query(models.User).filter(models.User.id == user_id).first()
+    if target_user is None:
+        return None, "user_not_found"
+    existing = db.query(models.ProjectMember).filter(
+        models.ProjectMember.project_id == project_id,
+        models.ProjectMember.user_id == user_id,
+    ).first()
+    if existing:
+        return None, "already_member"
+    membership = models.ProjectMember(
+        project_id=project_id,
+        user_id=user_id,
+        added_by=added_by,
+    )
+    db.add(membership)
+    db.commit()
+    db.refresh(membership)
+    return {
+        "user_id": target_user.id,
+        "username": target_user.username,
+        "name": target_user.name,
+        "role": target_user.role,
+        "added_at": membership.added_at,
+        "added_by": membership.added_by,
+    }, None
+
+
+def remove_project_member(db: Session, project_id, user_id, current_user: models.User):
+    project = db.query(models.Project).filter(models.Project.id == project_id).first()
+    if project is None:
+        return False, "not_found"
+    if str(project.created_by) != str(current_user.id) and current_user.role != "admin":
+        return False, "forbidden"
+    membership = db.query(models.ProjectMember).filter(
+        models.ProjectMember.project_id == project_id,
+        models.ProjectMember.user_id == user_id,
+    ).first()
+    if membership is None:
+        return False, "not_found"
+    db.delete(membership)
+    db.commit()
+    return True, None

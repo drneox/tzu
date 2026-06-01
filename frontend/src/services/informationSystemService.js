@@ -10,14 +10,15 @@ import apiClient from './apiClient';
  * @param {number} limit - Cantidad máxima de sistemas a recuperar
  * @returns {Promise} - Promise con los datos de sistemas y conteo total
  */
-export const getInformationSystems = async (skip = 0, limit = 10) => {
+export const getInformationSystems = async (skip = 0, limit = 10, project_id = null) => {
   try {
+    const projectParam = project_id ? `&project_id=${project_id}` : '';
     // Primero obtenemos el total de sistemas (sin límite)
-    const countResponse = await apiClient.get(`/information_systems?skip=0&limit=1000`);
+    const countResponse = await apiClient.get(`/information_systems?skip=0&limit=1000${projectParam}`);
     const totalCount = countResponse.data.length;
     
     // Luego obtenemos los datos paginados
-    const dataResponse = await apiClient.get(`/information_systems?skip=${skip}&limit=${limit}`);
+    const dataResponse = await apiClient.get(`/information_systems?skip=${skip}&limit=${limit}${projectParam}`);
     
     // Agregamos el conteo total a la respuesta
     dataResponse.totalCount = totalCount;
@@ -114,4 +115,20 @@ export const uploadDiagramText = async (id, text) => {
 export const fetchInformationSystemById = async (id) => {
   const res = await getInformationSystemById(id);
   return res.data;
+};
+
+/**
+ * Update an information system (title, description, or project assignment)
+ * @param {string} id - Information system UUID
+ * @param {object} data - Fields to update: { title, description, project_id }
+ * @returns {Promise} - Updated information system
+ */
+export const updateInformationSystem = async (id, data) => {
+  try {
+    const response = await apiClient.put(`/information_systems/${id}`, data);
+    return response;
+  } catch (error) {
+    console.error('Error al actualizar sistema de información:', error);
+    throw error;
+  }
 };

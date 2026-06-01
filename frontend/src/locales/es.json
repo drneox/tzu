@@ -348,6 +348,21 @@
           "critical": "Crítico"
         }
       }
-    }
-  }
+    }  },
+  "projects": {
+    "title": "Proyectos",
+    "noProject": "Sin proyecto",
+    "createNew": "Crear \"{{name}}\"",
+    "namePlaceholder": "Seleccionar o crear proyecto...",
+    "description": "Descripción",
+    "members": "Miembros",
+    "addMember": "Agregar miembro",
+    "removeMember": "Eliminar miembro",
+    "analyses": "Análisis",
+    "deleteConfirm": "¿Eliminar este proyecto?",
+    "deleted": "Proyecto eliminado",
+    "created": "Proyecto creado",
+    "updated": "Proyecto actualizado",
+    "filterAll": "Todos los proyectos",
+    "project": "Proyecto"  }
 }

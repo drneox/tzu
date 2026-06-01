@@ -8,6 +8,7 @@ import apiClient, { API_BASE_URL } from './apiClient';
 import * as authService from './authService';
 import * as informationSystemService from './informationSystemService';
 import * as threatService from './threatService';
+import * as projectService from './projectService';
 
 // Exportar todos los servicios
 export const { 
@@ -22,7 +23,8 @@ export const {
   createInformationSystem,
   uploadDiagram,
   uploadDiagramText,
-  fetchInformationSystemById
+  fetchInformationSystemById,
+  updateInformationSystem
 } = informationSystemService;
 
 export const {
@@ -35,6 +37,17 @@ export const {
   updateThreatRisk,
   deleteThreat
 } = threatService;
+
+export const {
+  getProjects,
+  createProject,
+  getProject,
+  updateProject,
+  deleteProject,
+  getProjectMembers,
+  addProjectMember,
+  removeProjectMember
+} = projectService;
 
 // Para mantener compatibilidad con código antiguo
 export const getInformationSystemsById = informationSystemService.getInformationSystemById;

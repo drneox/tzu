@@ -20,6 +20,7 @@ from typing import List, Optional, Dict, Any
 
 # Third-party imports
 from fastapi import FastAPI, HTTPException, Depends, UploadFile, Body, Form, status, Path, Query
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
@@ -506,22 +507,17 @@ async def get_audit_log(
 async def read_information_systems(
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(100, ge=1, le=1000, description="Maximum number of records to return"),
+    project_id: Optional[str] = Query(None, description="Filter by project UUID"),
     db: Session = Depends(get_db), 
     current_user: models.User = Depends(get_current_active_user)
 ):
     """
     Retrieve list of information systems with pagination.
-    
-    Args:
-        skip: Number of records to skip for pagination
-        limit: Maximum number of records to return
-        db: Database session
-        current_user: Current authenticated user
-        
-    Returns:
-        List[schemas.InformationSystem]: List of information systems
     """
-    information_systems = crud.get_information_systems(db, skip=skip, limit=limit)
+    filter_project_id = None
+    if project_id is not None:
+        filter_project_id = validate_uuid(project_id, "project_id")
+    information_systems = crud.get_information_systems(db, skip=skip, limit=limit, project_id=filter_project_id)
     return information_systems
 
 @app.get(
@@ -572,20 +568,12 @@ async def read_information_system(
     description="Create a new information system"
 )
 async def create_information_system(
-    information_system: schemas.InformationSystemBaseCreate, 
+    information_system: schemas.InformationSystemCreate, 
     db: Session = Depends(get_db), 
     current_user: models.User = Depends(require_analyst_user)
 ):
     """
     Create a new information system.
-    
-    Args:
-        information_system: Information system data
-        db: Database session
-        current_user: Current authenticated user
-        
-    Returns:
-        schemas.InformationSystem: Created information system
     """
     db_information_system = crud.create_information_system(
         db, 
@@ -1673,10 +1661,238 @@ async def delete_remediation(
     return {"message": "Remediation deleted successfully"}
 
 # =====================================================
-# ERROR HANDLERS & MIDDLEWARE
+# PROJECTS ENDPOINTS
 # =====================================================
 
-from fastapi.responses import JSONResponse
+@app.get(
+    "/projects",
+    response_model=List[schemas.ProjectWithCounts],
+    tags=["Projects"],
+    summary="List Projects",
+    description="Get list of all projects with analysis and member counts"
+)
+async def list_projects(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=1000),
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_active_user),
+):
+    projects = crud.get_projects(db, skip=skip, limit=limit)
+    result = []
+    for p in projects:
+        result.append(schemas.ProjectWithCounts(
+            id=p.id,
+            name=p.name,
+            description=p.description,
+            created_at=p.created_at,
+            created_by=p.created_by,
+            analysis_count=getattr(p, "_analysis_count", 0),
+            member_count=getattr(p, "_member_count", 0),
+        ))
+    return result
+
+
+@app.post(
+    "/projects",
+    response_model=schemas.ProjectResponse,
+    status_code=status.HTTP_201_CREATED,
+    tags=["Projects"],
+    summary="Create Project",
+    description="Create a new project (analyst or admin only)"
+)
+async def create_project_endpoint(
+    project: schemas.ProjectCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_analyst_user),
+):
+    if not project.name or not project.name.strip():
+        raise HTTPException(status_code=400, detail="Project name cannot be empty")
+    if len(project.name.strip()) > 120:
+        raise HTTPException(status_code=400, detail="Project name too long (max 120 chars)")
+    return crud.create_project(db, project=project, created_by=current_user.id)
+
+
+@app.get(
+    "/projects/{project_id}",
+    response_model=schemas.ProjectWithCounts,
+    tags=["Projects"],
+    summary="Get Project",
+    description="Get a single project by ID"
+)
+async def get_project_endpoint(
+    project_id: str = Path(..., description="Project UUID"),
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_active_user),
+):
+    pid = validate_uuid(project_id, "project ID")
+    project = crud.get_project(db, project_id=pid)
+    if project is None:
+        raise HTTPException(status_code=404, detail="Project not found")
+    return schemas.ProjectWithCounts(
+        id=project.id,
+        name=project.name,
+        description=project.description,
+        created_at=project.created_at,
+        created_by=project.created_by,
+        analysis_count=getattr(project, "_analysis_count", 0),
+        member_count=getattr(project, "_member_count", 0),
+    )
+
+
+@app.put(
+    "/projects/{project_id}",
+    response_model=schemas.ProjectWithCounts,
+    tags=["Projects"],
+    summary="Update Project",
+    description="Update project name/description (owner or admin only)"
+)
+async def update_project_endpoint(
+    project_id: str = Path(..., description="Project UUID"),
+    data: schemas.ProjectUpdate = Body(...),
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_active_user),
+):
+    pid = validate_uuid(project_id, "project ID")
+    project, error = crud.update_project(db, project_id=pid, data=data, current_user=current_user)
+    if error == "not_found":
+        raise HTTPException(status_code=404, detail="Project not found")
+    if error == "forbidden":
+        raise HTTPException(status_code=403, detail="Only the project creator or an admin can update this project")
+    if error == "empty_name":
+        raise HTTPException(status_code=400, detail="Project name cannot be empty")
+    project = crud.get_project(db, project_id=pid)
+    return schemas.ProjectWithCounts(
+        id=project.id,
+        name=project.name,
+        description=project.description,
+        created_at=project.created_at,
+        created_by=project.created_by,
+        analysis_count=getattr(project, "_analysis_count", 0),
+        member_count=getattr(project, "_member_count", 0),
+    )
+
+
+@app.delete(
+    "/projects/{project_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    tags=["Projects"],
+    summary="Delete Project",
+    description="Delete a project (owner or admin only)"
+)
+async def delete_project_endpoint(
+    project_id: str = Path(..., description="Project UUID"),
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_active_user),
+):
+    pid = validate_uuid(project_id, "project ID")
+    ok, error = crud.delete_project(db, project_id=pid, current_user=current_user)
+    if error == "not_found":
+        raise HTTPException(status_code=404, detail="Project not found")
+    if error == "forbidden":
+        raise HTTPException(status_code=403, detail="Only the project creator or an admin can delete this project")
+
+
+@app.get(
+    "/projects/{project_id}/members",
+    response_model=List[schemas.ProjectMemberBase],
+    tags=["Projects"],
+    summary="List Project Members",
+    description="List members of a project (owner or admin only)"
+)
+async def list_project_members(
+    project_id: str = Path(..., description="Project UUID"),
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_active_user),
+):
+    pid = validate_uuid(project_id, "project ID")
+    members, error = crud.get_project_members(db, project_id=pid, current_user=current_user)
+    if error == "not_found":
+        raise HTTPException(status_code=404, detail="Project not found")
+    if error == "forbidden":
+        raise HTTPException(status_code=403, detail="Only the project creator or an admin can view members")
+    return [schemas.ProjectMemberBase(**m) for m in members]
+
+
+@app.post(
+    "/projects/{project_id}/members",
+    response_model=schemas.ProjectMemberBase,
+    status_code=status.HTTP_201_CREATED,
+    tags=["Projects"],
+    summary="Add Project Member",
+    description="Add a user as a member of a project (owner or admin only)"
+)
+async def add_project_member_endpoint(
+    project_id: str = Path(..., description="Project UUID"),
+    body: schemas.ProjectMemberAdd = Body(...),
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_active_user),
+):
+    pid = validate_uuid(project_id, "project ID")
+    member, error = crud.add_project_member(
+        db,
+        project_id=pid,
+        user_id=body.user_id,
+        added_by=current_user.id,
+        current_user=current_user,
+    )
+    if error == "not_found":
+        raise HTTPException(status_code=404, detail="Project not found")
+    if error == "forbidden":
+        raise HTTPException(status_code=403, detail="Only the project creator or an admin can add members")
+    if error == "user_not_found":
+        raise HTTPException(status_code=400, detail="User not found")
+    if error == "already_member":
+        raise HTTPException(status_code=409, detail="User is already a member of this project")
+    return schemas.ProjectMemberBase(**member)
+
+
+@app.delete(
+    "/projects/{project_id}/members/{user_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    tags=["Projects"],
+    summary="Remove Project Member",
+    description="Remove a user from a project (owner or admin only)"
+)
+async def remove_project_member_endpoint(
+    project_id: str = Path(..., description="Project UUID"),
+    user_id: str = Path(..., description="User UUID"),
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_active_user),
+):
+    pid = validate_uuid(project_id, "project ID")
+    uid = validate_uuid(user_id, "user ID")
+    ok, error = crud.remove_project_member(db, project_id=pid, user_id=uid, current_user=current_user)
+    if error == "not_found":
+        raise HTTPException(status_code=404, detail="Project or membership not found")
+    if error == "forbidden":
+        raise HTTPException(status_code=403, detail="Only the project creator or an admin can remove members")
+
+
+@app.put(
+    "/information_systems/{information_system_id}",
+    response_model=schemas.InformationSystem,
+    tags=["Information Systems"],
+    summary="Update Information System",
+    description="Update title, description, or project assignment of an information system (owner or admin only)"
+)
+async def update_information_system_endpoint(
+    information_system_id: str = Path(..., description="Information system UUID"),
+    data: schemas.InformationSystemUpdate = Body(...),
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_analyst_user),
+):
+    system_uuid = validate_uuid(information_system_id, "information system ID")
+    system, error = crud.update_information_system(db, str(system_uuid), data, current_user)
+    if error == "not_found":
+        raise HTTPException(status_code=404, detail="Information system not found")
+    if error == "forbidden":
+        raise HTTPException(status_code=403, detail="You can only update information systems you created")
+    return system
+
+
+# =====================================================
+# ERROR HANDLERS & MIDDLEWARE
+# =====================================================
 
 @app.exception_handler(404)
 async def not_found_handler(request, exc):

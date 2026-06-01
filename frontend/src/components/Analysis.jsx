@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { FaTrash, FaFilePdf, FaEdit, FaEye, FaTable, FaThLarge, FaEyeSlash } from "react-icons/fa";
 import { Flex, TableContainer, Table, Tr, Td, Thead, Th, Tbody, Card, CardHeader, CardBody, Grid, GridItem, Text, Image as ChakraImage, Modal, ModalOverlay, ModalContent, ModalCloseButton, ModalBody, useDisclosure, Button, useToast, Tabs, TabList, TabPanels, Tab, TabPanel, Accordion, AccordionItem, AccordionButton, AccordionPanel, AccordionIcon, VStack, HStack, Divider, Badge, useColorModeValue, Box, Tooltip, Switch, FormControl, FormLabel } from "@chakra-ui/react";
-import { fetchInformationSystemById, getInformationSystemById, updateThreatsRiskBatch, createThreatForSystem, deleteThreat } from "../services/index";
+import { fetchInformationSystemById, getInformationSystemById, updateThreatsRiskBatch, createThreatForSystem, deleteThreat, updateInformationSystem } from "../services/index";
 import { useLocalization, getOwaspSelectOptions } from '../hooks/useLocalization';
 import { useAuth } from '../context/AuthContext';
 import OwaspSelector from './OwaspSelector';
@@ -11,6 +11,7 @@ import ReportGenerator from './ReportGenerator';
 import RiskDisplay from './RiskDisplay';
 import ResidualRiskSelector from './ResidualRiskSelector';
 import ControlTagsWithAutocomplete from './ControlTagsWithAutocomplete';
+import ProjectCombobox from './ProjectCombobox';
 import { calculateInherentRisk, getRiskColorCSS, getRiskLabel } from '../utils/riskCalculations';
 import { handleTextareaResize, calculateTextareaHeight } from '../utils/textareaHelpers';
 
@@ -98,6 +99,8 @@ const Analysis = () => {
   // States to control table view
   const [viewMode, setViewMode] = useState('compact'); // 'compact', 'detailed', 'tabs'
   const [showRiskAssessment, setShowRiskAssessment] = useState(true); // Controls OWASP evaluation visibility
+  const [projectValue, setProjectValue] = useState(null);
+  const [isSavingProject, setIsSavingProject] = useState(false);
 
   // Generic function to get risk values formatted to 1 decimal
   const getRiskValue = (threatId, riskType = 'inherent') => {
@@ -383,6 +386,13 @@ const Analysis = () => {
     setServiceData(data);
     setThreats(data?.threats || []);
 
+    // Sync project state
+    if (data?.project_id) {
+      setProjectValue({ id: data.project_id, name: data.project_name || '', isNew: false });
+    } else {
+      setProjectValue(null);
+    }
+
     if (data?.diagram_input_type === "text" && data?.diagram) {
       try {
         const res = await fetch(`/diagrams/${data.diagram}`);
@@ -571,6 +581,62 @@ const Analysis = () => {
               <Text fontSize="md" color="gray.700" lineHeight="1.5">
                 {serviceData.description}
               </Text>
+            </GridItem>
+
+            <GridItem>
+              <Text fontWeight="bold" color="blue.600" fontSize="md">
+                {t?.projects?.project || 'Project'}:
+              </Text>
+            </GridItem>
+            <GridItem>
+              <HStack spacing={2} align="center">
+                <Box flex="1" maxWidth="340px">
+                  <ProjectCombobox
+                    value={projectValue}
+                    onChange={setProjectValue}
+                    isDisabled={!canWrite}
+                  />
+                </Box>
+                {canWrite && (
+                  <Button
+                    size="sm"
+                    colorScheme="teal"
+                    isLoading={isSavingProject}
+                    onClick={async () => {
+                      setIsSavingProject(true);
+                      try {
+                        const payload = {};
+                        if (projectValue) {
+                          if (projectValue.isNew) {
+                            // Project by name not supported from here — requires backend create-inline
+                            // Create via project name passed as special field
+                            payload.project_name_inline = projectValue.name;
+                          } else {
+                            payload.project_id = projectValue.id;
+                          }
+                        } else {
+                          payload.project_id = null;
+                        }
+                        await updateInformationSystem(id, payload);
+                        const freshData = await fetchInformationSystemById(id);
+                        setServiceData(freshData);
+                        if (freshData?.project_id) {
+                          setProjectValue({ id: freshData.project_id, name: freshData.project_name || '', isNew: false });
+                        } else {
+                          setProjectValue(null);
+                        }
+                        showNotification(t?.projects?.updated || 'Updated', t?.projects?.project || 'Project assignment saved', 'success');
+                      } catch {
+                        showNotification('Error', 'Could not update project', 'error');
+                      } finally {
+                        setIsSavingProject(false);
+                      }
+                    }}
+                  >
+                    {t?.ui?.save || 'Save'}
+                  </Button>
+                )}
+              </HStack>
             </GridItem>
           </Grid>
           
