@@ -1,218 +1,127 @@
 # Controles SBS (Superintendencia de Banca, Seguros y AFP - Perú)
+# Circular SBS G-504-2021: Gestión de Riesgos de Ciberseguridad
+# Estructura basada en las funciones del NIST CSF + requisitos de gobernanza de la circular.
+
+VERSION = "Circular G-504-2021"
 
 SBS_CONTROLS = {
-    # Gestión de Riesgos Operacionales
-    "SBS-2137-1": {
-        "title": "Política de Gestión de Riesgos Operacionales",
-        "description": "Las empresas deben contar con una política de gestión de riesgos operacionales aprobada por el directorio.",
-        "category": "Gestión de Riesgos Operacionales"
+
+    # ─── GOBERNANZA ──────────────────────────────────────────────────────────────
+    "SBS-504-1": {
+        "title": "Marco de Gestión de Riesgos de Ciberseguridad",
+        "description": "Las empresas deben implementar un Marco de Gestión de Riesgos de Ciberseguridad (MGRC) aprobado por el directorio, que defina políticas, roles, responsabilidades y objetivos de ciberseguridad alineados con el apetito de riesgo institucional.",
+        "category": "Gobernanza"
     },
-    "SBS-2137-2": {
-        "title": "Unidad de Gestión de Riesgos Operacionales",
-        "description": "Las empresas deben contar con una unidad organizacional responsable de la gestión de riesgos operacionales.",
-        "category": "Gestión de Riesgos Operacionales"
+    "SBS-504-2": {
+        "title": "Oficial de Ciberseguridad (CISO)",
+        "description": "Las empresas deben designar un Oficial de Ciberseguridad (CISO) con independencia organizacional, nivel jerárquico adecuado y acceso directo al directorio y a la alta gerencia para reportar el estado de ciberseguridad.",
+        "category": "Gobernanza"
     },
-    "SBS-2137-3": {
-        "title": "Identificación y Evaluación de Riesgos",
-        "description": "Las empresas deben identificar, evaluar y monitorear los riesgos operacionales de manera sistemática.",
-        "category": "Gestión de Riesgos Operacionales"
+    "SBS-504-3": {
+        "title": "Comité de Ciberseguridad",
+        "description": "Las empresas deben constituir un comité de ciberseguridad con participación de la alta dirección y representantes de las áreas de TI, riesgo operacional y cumplimiento, responsable de aprobar la estrategia y supervisar la gestión de riesgos de ciberseguridad.",
+        "category": "Gobernanza"
     },
-    "SBS-2137-4": {
-        "title": "Registro de Eventos de Pérdida",
-        "description": "Las empresas deben mantener un registro de eventos de pérdida operacional.",
-        "category": "Gestión de Riesgos Operacionales"
-    },
-    "SBS-2137-5": {
-        "title": "Plan de Continuidad del Negocio",
-        "description": "Las empresas deben contar con un plan de continuidad del negocio para asegurar la prestación de servicios críticos.",
-        "category": "Gestión de Riesgos Operacionales"
+    "SBS-504-4": {
+        "title": "Reporte periódico al directorio",
+        "description": "La alta gerencia debe reportar periódicamente al directorio el estado de los riesgos de ciberseguridad, los incidentes materiales y la efectividad de los controles implementados.",
+        "category": "Gobernanza"
     },
 
-    # Gestión de Seguridad de la Información
-    "SBS-2158-1": {
-        "title": "Política de Seguridad de la Información",
-        "description": "Las empresas deben establecer una política de seguridad de la información aprobada por el directorio.",
-        "category": "Gestión de Seguridad de la Información"
+    # ─── IDENTIFICAR ─────────────────────────────────────────────────────────────
+    "SBS-504-5": {
+        "title": "Inventario de Activos de Información",
+        "description": "Las empresas deben mantener un inventario actualizado de activos de información (hardware, software, datos, servicios), con clasificación por criticidad y sensibilidad, que sirva como base para la evaluación de riesgos de ciberseguridad.",
+        "category": "Identificar"
     },
-    "SBS-2158-2": {
-        "title": "Comité de Seguridad de la Información",
-        "description": "Las empresas deben constituir un comité de seguridad de la información con representantes de las áreas relevantes.",
-        "category": "Gestión de Seguridad de la Información"
+    "SBS-504-6": {
+        "title": "Evaluación de Riesgos de Ciberseguridad",
+        "description": "Las empresas deben realizar evaluaciones periódicas de riesgos de ciberseguridad que incluyan identificación de amenazas, vulnerabilidades e impactos sobre activos críticos, documentando los resultados y los planes de tratamiento.",
+        "category": "Identificar"
     },
-    "SBS-2158-3": {
-        "title": "Oficial de Seguridad de la Información",
-        "description": "Las empresas deben designar un oficial de seguridad de la información responsable de implementar la política.",
-        "category": "Gestión de Seguridad de la Información"
-    },
-    "SBS-2158-4": {
-        "title": "Clasificación de la Información",
-        "description": "Las empresas deben clasificar la información según su criticidad y sensibilidad.",
-        "category": "Gestión de Seguridad de la Información"
-    },
-    "SBS-2158-5": {
-        "title": "Control de Acceso",
-        "description": "Las empresas deben implementar controles de acceso basados en el principio de menor privilegio.",
-        "category": "Gestión de Seguridad de la Información"
-    },
-    "SBS-2158-6": {
-        "title": "Gestión de Identidades y Accesos",
-        "description": "Las empresas deben implementar procesos para la gestión del ciclo de vida de identidades y accesos.",
-        "category": "Gestión de Seguridad de la Información"
-    },
-    "SBS-2158-7": {
-        "title": "Cifrado de Información",
-        "description": "Las empresas deben cifrar la información sensible tanto en tránsito como en reposo.",
-        "category": "Gestión de Seguridad de la Información"
-    },
-    "SBS-2158-8": {
-        "title": "Monitoreo y Detección de Incidentes",
-        "description": "Las empresas deben implementar mecanismos de monitoreo continuo y detección de incidentes de seguridad.",
-        "category": "Gestión de Seguridad de la Información"
-    },
-    "SBS-2158-9": {
-        "title": "Respuesta a Incidentes",
-        "description": "Las empresas deben contar con procedimientos para la respuesta y recuperación ante incidentes de seguridad.",
-        "category": "Gestión de Seguridad de la Información"
-    },
-    "SBS-2158-10": {
-        "title": "Pruebas de Penetración",
-        "description": "Las empresas deben realizar pruebas de penetración periódicas para evaluar la efectividad de los controles de seguridad.",
-        "category": "Gestión de Seguridad de la Información"
+    "SBS-504-7": {
+        "title": "Gestión de Vulnerabilidades",
+        "description": "Las empresas deben implementar un proceso continuo de identificación, clasificación, priorización y remediación de vulnerabilidades técnicas en sistemas, aplicaciones e infraestructura, con plazos de corrección definidos según criticidad.",
+        "category": "Identificar"
     },
 
-    # Gestión de Tecnología de Información
-    "SBS-2167-1": {
-        "title": "Comité de Tecnología de Información",
-        "description": "Las empresas deben constituir un comité de tecnología de información con participación de la alta dirección.",
-        "category": "Gestión de Tecnología de Información"
+    # ─── PROTEGER ────────────────────────────────────────────────────────────────
+    "SBS-504-8": {
+        "title": "Control de Acceso y Gestión de Identidades",
+        "description": "Las empresas deben implementar controles de acceso basados en el principio de mínimo privilegio, con autenticación multifactor para accesos privilegiados y remotos, y procesos formales de revisión periódica y revocación de accesos.",
+        "category": "Proteger"
     },
-    "SBS-2167-2": {
-        "title": "Plan Estratégico de TI",
-        "description": "Las empresas deben contar con un plan estratégico de tecnología de información alineado con los objetivos del negocio.",
-        "category": "Gestión de Tecnología de Información"
+    "SBS-504-9": {
+        "title": "Seguridad en el Desarrollo de Software",
+        "description": "Las empresas deben incorporar controles de seguridad en el ciclo de vida del desarrollo de software (SDLC), incluyendo revisiones de código, pruebas de seguridad y validación de entornos previos a producción.",
+        "category": "Proteger"
     },
-    "SBS-2167-3": {
-        "title": "Gobierno de TI",
-        "description": "Las empresas deben implementar un marco de gobierno de TI que asegure el alineamiento con el negocio.",
-        "category": "Gestión de Tecnología de Información"
+    "SBS-504-10": {
+        "title": "Segmentación de Redes y Protección Perimetral",
+        "description": "Las empresas deben implementar segmentación de redes para aislar sistemas críticos, con controles perimetrales (firewalls, IPS/IDS, WAF) que restrinjan el tráfico no autorizado y protejan los servicios expuestos.",
+        "category": "Proteger"
     },
-    "SBS-2167-4": {
-        "title": "Gestión de Proyectos de TI",
-        "description": "Las empresas deben implementar una metodología para la gestión de proyectos de tecnología de información.",
-        "category": "Gestión de Tecnología de Información"
+    "SBS-504-11": {
+        "title": "Cifrado de Datos",
+        "description": "Las empresas deben cifrar los datos sensibles en tránsito y en reposo utilizando algoritmos y longitudes de clave robustos, con gestión segura del ciclo de vida de las claves criptográficas.",
+        "category": "Proteger"
     },
-    "SBS-2167-5": {
-        "title": "Desarrollo y Adquisición de Sistemas",
-        "description": "Las empresas deben contar con procedimientos para el desarrollo y adquisición de sistemas de información.",
-        "category": "Gestión de Tecnología de Información"
-    },
-    "SBS-2167-6": {
-        "title": "Gestión de Cambios",
-        "description": "Las empresas deben implementar un proceso formal de gestión de cambios en los sistemas de información.",
-        "category": "Gestión de Tecnología de Información"
-    },
-    "SBS-2167-7": {
-        "title": "Gestión de Configuración",
-        "description": "Las empresas deben mantener un inventario actualizado de los componentes de infraestructura de TI.",
-        "category": "Gestión de Tecnología de Información"
-    },
-    "SBS-2167-8": {
-        "title": "Gestión de Capacidad y Disponibilidad",
-        "description": "Las empresas deben monitorear y gestionar la capacidad y disponibilidad de los servicios de TI.",
-        "category": "Gestión de Tecnología de Información"
-    },
-    "SBS-2167-9": {
-        "title": "Tercerización de Servicios de TI",
-        "description": "Las empresas deben establecer controles apropiados para la tercerización de servicios de tecnología de información.",
-        "category": "Gestión de Tecnología de Información"
-    },
-    "SBS-2167-10": {
-        "title": "Recuperación de Desastres",
-        "description": "Las empresas deben contar con un plan de recuperación de desastres para los sistemas críticos.",
-        "category": "Gestión de Tecnología de Información"
+    "SBS-504-12": {
+        "title": "Concientización y Capacitación en Ciberseguridad",
+        "description": "Las empresas deben implementar programas periódicos de concientización y capacitación en ciberseguridad para todo el personal, incluyendo simulaciones de phishing y entrenamiento especializado para roles con acceso privilegiado.",
+        "category": "Proteger"
     },
 
-    # Canales Digitales
-    "SBS-2123-1": {
-        "title": "Política de Canales Digitales",
-        "description": "Las empresas deben establecer una política para la gestión de canales digitales.",
-        "category": "Canales Digitales"
+    # ─── DETECTAR ────────────────────────────────────────────────────────────────
+    "SBS-504-13": {
+        "title": "Monitoreo Continuo y SIEM",
+        "description": "Las empresas deben implementar capacidades de monitoreo continuo de eventos de seguridad mediante herramientas SIEM u equivalentes, con correlación de logs de sistemas críticos, detección de anomalías y alertas en tiempo real.",
+        "category": "Detectar"
     },
-    "SBS-2123-2": {
-        "title": "Autenticación Fuerte",
-        "description": "Las empresas deben implementar mecanismos de autenticación fuerte para canales digitales.",
-        "category": "Canales Digitales"
+    "SBS-504-14": {
+        "title": "Centro de Operaciones de Seguridad (SOC)",
+        "description": "Las empresas con operaciones de importancia sistémica deben contar con capacidades de SOC (propio o tercerizado) para la detección, análisis y escalamiento de incidentes de ciberseguridad de forma continua.",
+        "category": "Detectar"
     },
-    "SBS-2123-3": {
-        "title": "Cifrado en Canales Digitales",
-        "description": "Las empresas deben cifrar las comunicaciones en canales digitales.",
-        "category": "Canales Digitales"
-    },
-    "SBS-2123-4": {
-        "title": "Monitoreo de Transacciones",
-        "description": "Las empresas deben monitorear las transacciones en canales digitales para detectar actividades sospechosas.",
-        "category": "Canales Digitales"
-    },
-    "SBS-2123-5": {
-        "title": "Límites Transaccionales",
-        "description": "Las empresas deben establecer límites transaccionales apropiados para canales digitales.",
-        "category": "Canales Digitales"
+    "SBS-504-15": {
+        "title": "Inteligencia de Amenazas (Threat Intelligence)",
+        "description": "Las empresas deben participar en mecanismos de intercambio de información sobre amenazas cibernéticas y consumir fuentes de inteligencia relevantes para el sector financiero, incluyendo las alertas emitidas por la SBS.",
+        "category": "Detectar"
     },
 
-    # Prevención de Lavado de Activos
-    "SBS-2122-1": {
-        "title": "Sistema de Prevención de Lavado de Activos",
-        "description": "Las empresas deben implementar un sistema de prevención de lavado de activos y financiamiento del terrorismo.",
-        "category": "Prevención de Lavado de Activos"
+    # ─── RESPONDER ───────────────────────────────────────────────────────────────
+    "SBS-504-16": {
+        "title": "Plan de Respuesta a Incidentes de Ciberseguridad",
+        "description": "Las empresas deben contar con un plan documentado y probado de respuesta a incidentes de ciberseguridad que defina roles, procedimientos de contención, erradicación, comunicación interna y coordinación con autoridades.",
+        "category": "Responder"
     },
-    "SBS-2122-2": {
-        "title": "Conocimiento del Cliente",
-        "description": "Las empresas deben implementar procedimientos de debida diligencia para el conocimiento del cliente.",
-        "category": "Prevención de Lavado de Activos"
-    },
-    "SBS-2122-3": {
-        "title": "Monitoreo de Operaciones",
-        "description": "Las empresas deben monitorear las operaciones para detectar transacciones inusuales o sospechosas.",
-        "category": "Prevención de Lavado de Activos"
-    },
-    "SBS-2122-4": {
-        "title": "Reporte de Operaciones Sospechosas",
-        "description": "Las empresas deben reportar operaciones sospechosas a la Unidad de Inteligencia Financiera.",
-        "category": "Prevención de Lavado de Activos"
-    },
-    "SBS-2122-5": {
-        "title": "Capacitación en PLA/FT",
-        "description": "Las empresas deben capacitar a su personal en prevención de lavado de activos y financiamiento del terrorismo.",
-        "category": "Prevención de Lavado de Activos"
+    "SBS-504-17": {
+        "title": "Notificación de Incidentes a la SBS",
+        "description": "Las empresas deben notificar a la SBS los incidentes de ciberseguridad que afecten la continuidad operativa, la confidencialidad de datos de clientes o la integridad de sistemas críticos, dentro de los plazos establecidos en la circular.",
+        "category": "Responder"
     },
 
-    # Protección al Consumidor
-    "SBS-2141-1": {
-        "title": "Política de Protección al Consumidor",
-        "description": "Las empresas deben establecer una política de protección al consumidor financiero.",
-        "category": "Protección al Consumidor"
+    # ─── RECUPERAR ───────────────────────────────────────────────────────────────
+    "SBS-504-18": {
+        "title": "Plan de Continuidad ante Ciberincidentes",
+        "description": "Las empresas deben integrar escenarios de ciberataques en sus planes de continuidad operativa y recuperación de desastres, con RTO/RPO definidos para sistemas críticos y pruebas periódicas de los procedimientos de restauración.",
+        "category": "Recuperar"
     },
-    "SBS-2141-2": {
-        "title": "Transparencia de Información",
-        "description": "Las empresas deben proporcionar información clara y transparente sobre productos y servicios.",
-        "category": "Protección al Consumidor"
+    "SBS-504-19": {
+        "title": "Pruebas de Resiliencia Cibernética",
+        "description": "Las empresas deben realizar pruebas periódicas de resiliencia cibernética incluyendo ejercicios de simulación (tabletop), pruebas de penetración y red team, para evaluar la efectividad de los controles y la capacidad de recuperación.",
+        "category": "Recuperar"
     },
-    "SBS-2141-3": {
-        "title": "Atención de Reclamos",
-        "description": "Las empresas deben contar con procedimientos para la atención oportuna de reclamos de clientes.",
-        "category": "Protección al Consumidor"
-    },
-    "SBS-2141-4": {
-        "title": "Educación Financiera",
-        "description": "Las empresas deben promover la educación financiera de sus clientes.",
-        "category": "Protección al Consumidor"
-    },
-    "SBS-2141-5": {
-        "title": "Prácticas de Venta Responsable",
-        "description": "Las empresas deben implementar prácticas de venta responsable de productos financieros.",
-        "category": "Protección al Consumidor"
+
+    # ─── GESTIÓN DE TERCEROS ─────────────────────────────────────────────────────
+    "SBS-504-20": {
+        "title": "Gestión de Riesgo de Ciberseguridad en Terceros",
+        "description": "Las empresas deben evaluar los riesgos de ciberseguridad de proveedores y terceros con acceso a sus sistemas o datos, establecer requisitos contractuales de seguridad, y monitorear el cumplimiento durante toda la relación contractual.",
+        "category": "Gestión de Terceros"
     },
 }
 
 # Lista de tags para compatibilidad hacia atrás
 SBS_TAGS = list(SBS_CONTROLS.keys())
+
+

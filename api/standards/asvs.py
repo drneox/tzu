@@ -1,5 +1,7 @@
 # Controles ASVS (Application Security Verification Standard) - Versión 4.0.3
 
+VERSION = "4.0.3"
+
 ASVS_CONTROLS = {
     # V1: Architecture, Design and Threat Modeling
     "V1.1.1": {
@@ -272,6 +274,26 @@ ASVS_CONTROLS = {
     "V7.4.1": {
         "title": "Time Sources",
         "description": "Verificar que una fuente de tiempo genérica y registrada es usada para permitir la correlación de logs entre múltiples sistemas.",
+        "category": "Error Handling and Logging"
+    },
+    "V7.5.1": {
+        "title": "Log Entry Contents",
+        "description": "Verificar que cada entrada de log incluye la información necesaria para identificar quién realizó qué, dónde y cuándo: marca de tiempo, tipo de evento, usuario o sesión, operación, resultado, IP de origen y entidad objetivo si aplica.",
+        "category": "Error Handling and Logging"
+    },
+    "V7.5.2": {
+        "title": "Log Transmission",
+        "description": "Verificar que los mensajes de log son transmitidos a un sistema SIEM remoto o de agregación de logs para correlación y análisis centralizado de eventos de seguridad.",
+        "category": "Error Handling and Logging"
+    },
+    "V7.5.3": {
+        "title": "Log Integrity Protection",
+        "description": "Verificar que los logs de auditoría están protegidos contra modificación, eliminación y acceso no autorizado para garantizar su integridad como evidencia forense.",
+        "category": "Error Handling and Logging"
+    },
+    "V7.5.4": {
+        "title": "Authentication Failure Logging",
+        "description": "Verificar que todas las aplicaciones (incluyendo backends y APIs) registran todos los intentos de autenticación fallidos, especialmente ataques de fuerza bruta e intentos de omisión de autenticación.",
         "category": "Error Handling and Logging"
     },
 

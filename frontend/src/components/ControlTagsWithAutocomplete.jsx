@@ -5,12 +5,16 @@ import {
 } from "@chakra-ui/react";
 import { fetchControlTagSuggestions, searchControlTags } from '../services';
 import ControlTagTooltip from './ControlTagTooltip';
+import { useControlTagsCatalog } from '../context/ControlTagsCatalogContext';
 
 /**
  * Componente de Control Tags CON AUTOCOMPLETACIÓN REAL
  * Conectado al backend para sugerencias dinámicas
  */
 const ControlTagsWithAutocomplete = ({ threatId, strideCategory, initialTags = [], onTagsChange }) => {
+  // Catálogo cacheado (una sola petición por sesión)
+  const { getTagDetails, isLoaded: catalogLoaded } = useControlTagsCatalog();
+
   // Estado principal
   const [tags, setTags] = useState(initialTags);
   const [inputValue, setInputValue] = useState('');
@@ -32,12 +36,12 @@ const ControlTagsWithAutocomplete = ({ threatId, strideCategory, initialTags = [
     }
   }, [strideCategory]);
 
-  // Cargar detalles para tags iniciales
+  // Cargar detalles para tags iniciales — esperar a que el catálogo esté listo
   useEffect(() => {
-    if (initialTags && initialTags.length > 0) {
+    if (catalogLoaded && initialTags && initialTags.length > 0) {
       loadTagDetailsForExistingTags(initialTags);
     }
-  }, [initialTags]);
+  }, [catalogLoaded, initialTags]);
 
   // Notificar cambios al padre
   useEffect(() => {
@@ -48,7 +52,7 @@ const ControlTagsWithAutocomplete = ({ threatId, strideCategory, initialTags = [
 
   // Función para obtener el color del tag basado en el estándar (misma lógica que el tooltip)
   const getTagColor = (tag) => {
-    const tagDetails = tagDetailsMap[tag];
+    const tagDetails = tagDetailsMap[tag] || getTagDetails(tag);
     // Primary: standard from API details; Fallback: extract from "(STANDARD)" suffix
     const standard = tagDetails?.standard || tag.match(/\(([^)]+)\)$/)?.[1];
     
@@ -63,77 +67,29 @@ const ControlTagsWithAutocomplete = ({ threatId, strideCategory, initialTags = [
   };
 
   /**
-   * Carga detalles para tags que ya existen (initialTags)
+   * Carga detalles para tags existentes usando el catálogo cacheado (sin requests HTTP).
    */
-  const loadTagDetailsForExistingTags = async (existingTags) => {
-    console.log('loadTagDetailsForExistingTags - existingTags:', existingTags);
-    
-    try {
-      setIsLoading(true);
-      
-      // Cargar detalles para cada tag existente
-      const detailsMap = {};
-      
-      for (const tag of existingTags) {
-        try {
-          console.log(`Buscando detalles para tag: ${tag}`);
-          
-          // Extraer el tag base si viene formateado con paréntesis
-          const extractBaseTag = (tagStr) => {
-            const match = tagStr.match(/^(.+?)\s*\([^)]+\)$/);
-            return match ? match[1].trim() : tagStr;
+  const loadTagDetailsForExistingTags = (existingTags) => {
+    const detailsMap = {};
+    for (const tag of existingTags) {
+      const details = getTagDetails(tag);
+      if (details) {
+        detailsMap[tag] = details;
+      } else {
+        // Fallback: construir detalles mínimos desde el sufijo "(STANDARD)"
+        const standardFromSuffix = tag.match(/\(([^)]+)\)$/)?.[1] || null;
+        const baseTag = tag.replace(/\s*\([^)]+\)$/, '').trim();
+        if (standardFromSuffix) {
+          detailsMap[tag] = {
+            standard: standardFromSuffix,
+            category: null,
+            title: baseTag,
+            description: null,
           };
-          
-          const baseTag = extractBaseTag(tag);
-          console.log(`Tag base extraído: ${baseTag}`);
-          
-          // Buscar usando el tag base para mayor flexibilidad
-          const data = await searchControlTags(baseTag);
-          console.log(`Respuesta para ${tag}:`, data);
-          
-          if (data.detailed_results && data.detailed_results.length > 0) {
-            // Buscar el resultado que coincida con nuestro tag formateado
-            let tagDetail = data.detailed_results.find(item => item.tag === tag);
-            
-            // Si no encuentra coincidencia exacta, buscar por tag base
-            if (!tagDetail) {
-              tagDetail = data.detailed_results.find(item => {
-                const itemBaseTag = extractBaseTag(item.tag);
-                return itemBaseTag === baseTag;
-              });
-            }
-            
-            if (tagDetail) {
-              detailsMap[tag] = {
-                standard: tagDetail.standard,
-                category: tagDetail.category,
-                title: tagDetail.title,
-                description: tagDetail.description
-              };
-              console.log(`Detalles cargados para ${tag}:`, detailsMap[tag]);
-            } else {
-              console.warn(`No se encontró detalle específico para tag: ${tag}`);
-            }
-          } else {
-            console.warn(`No hay detailed_results para tag: ${tag}`);
-          }
-        } catch (err) {
-          console.warn(`Error cargando detalles para el tag: ${tag}`, err);
         }
       }
-      
-      console.log('detailsMap final:', detailsMap);
-      setTagDetailsMap(prev => {
-        const newMap = { ...prev, ...detailsMap };
-        console.log('tagDetailsMap actualizado:', newMap);
-        return newMap;
-      });
-      
-    } catch (err) {
-      console.error('Error cargando detalles de tags existentes:', err);
-    } finally {
-      setIsLoading(false);
     }
+    setTagDetailsMap(prev => ({ ...prev, ...detailsMap }));
   };
 
   /**
@@ -195,15 +151,20 @@ const ControlTagsWithAutocomplete = ({ threatId, strideCategory, initialTags = [
       setSuggestions(data.results || []);
       
       // Procesar detailed_results de la búsqueda
+      // Indexar por ID bare Y por tag formateado para evitar mismatches
       const detailsMap = {};
       if (data.detailed_results) {
         data.detailed_results.forEach(item => {
-          detailsMap[item.tag] = {
+          const entry = {
             standard: item.standard,
             category: item.category,
             title: item.title,
             description: item.description
           };
+          detailsMap[item.tag] = entry;  // bare: "AUTH-2"
+          if (item.standard) {
+            detailsMap[`${item.tag} (${item.standard})`] = entry;  // formateado: "AUTH-2 (MASVS)"
+          }
         });
       }
       setTagDetailsMap(prev => ({ ...prev, ...detailsMap }));
@@ -306,13 +267,10 @@ const ControlTagsWithAutocomplete = ({ threatId, strideCategory, initialTags = [
       {tags.length > 0 && (
         <HStack wrap="wrap" spacing={1}>
           {tags.map((tag, index) => {
-            // Debug: Log para verificar tagDetailsMap
-            console.log(`Tag: ${tag}, Details:`, tagDetailsMap[tag]);
-            
             return (
               <ControlTagTooltip
                 key={index}
-                tagDetails={tagDetailsMap[tag]}
+                tagDetails={tagDetailsMap[tag] || getTagDetails(tag)}
               >
                 <Tag size="sm" colorScheme={getTagColor(tag)} variant="solid" cursor="help">
                   <TagLabel>{tag}</TagLabel>
@@ -361,7 +319,7 @@ const ControlTagsWithAutocomplete = ({ threatId, strideCategory, initialTags = [
               {suggestions.map((suggestion, index) => (
                 <ControlTagTooltip
                   key={index}
-                  tagDetails={tagDetailsMap[suggestion]}
+                  tagDetails={tagDetailsMap[suggestion] || getTagDetails(suggestion)}
                 >
                   <ListItem
                     p={2}

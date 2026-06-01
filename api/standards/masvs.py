@@ -1,5 +1,5 @@
-# MASVS Controls (Mobile Application Security Verification Standard) - Versión 1.4.2
-
+# MASVS Controls (Mobile Application Security Verification Standard) - Versión 2.0
+VERSION = "2.0"
 MASVS_CONTROLS = {
     # V1: Architecture, Design and Threat Modeling
     "ARCH-1": {

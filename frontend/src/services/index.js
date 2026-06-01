@@ -77,9 +77,9 @@ export const fetchControlTagSuggestions = async (strideCategory) => {
 /**
  * Busca tags de control existentes
  */
-export const searchControlTags = async (query) => {
+export const searchControlTags = async (query, limit = 50) => {
   try {
-    const response = await apiClient.get(`/control-tags/search?query=${encodeURIComponent(query)}`);
+    const response = await apiClient.get(`/control-tags/search?query=${encodeURIComponent(query)}&limit=${limit}`);
     return response.data;
   } catch (error) {
     console.error('Error searching control tags:', error);
