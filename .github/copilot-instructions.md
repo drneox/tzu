@@ -6,14 +6,14 @@ This file provides context to GitHub Copilot about the current implementation wo
 ## Active Feature Plan
 
 The current implementation plan is located at:
-`specs/001-multi-user-roles/plan.md`
+`specs/003-dashboard/plan.md`
 
-Feature: **Multi-User Role Management** (branch: `feature/multi-user-roles`)
+Feature: **Security Dashboard** (branch: `003-dashboard`)
 
 Key design artifacts:
-- Spec: `specs/001-multi-user-roles/spec.md`
-- Data model: `specs/001-multi-user-roles/data-model.md`
-- Research decisions: `specs/001-multi-user-roles/research.md`
-- API contracts: `specs/001-multi-user-roles/contracts/`
-- Tasks: `specs/001-multi-user-roles/tasks.md`
+- Spec: `specs/003-dashboard/spec.md`
+- Data model: `specs/003-dashboard/data-model.md`
+- Research decisions: `specs/003-dashboard/research.md`
+- API contracts: `specs/003-dashboard/contracts/`
+- Tasks: `specs/003-dashboard/tasks.md`
 <!-- SPECKIT END -->

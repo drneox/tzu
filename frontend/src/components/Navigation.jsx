@@ -15,9 +15,9 @@ const NavLink = ({ to, children, exact }) => {
       style={{
         textDecoration: 'none',
         color: isActive ? '#00243c' : '#ffa833',
-        fontSize: '0.875rem',
+        fontSize: '0.8rem',
         fontWeight: isActive ? '700' : '500',
-        padding: '5px 14px',
+        padding: '4px 9px',
         borderRadius: '20px',
         background: isActive ? '#ffa833' : 'transparent',
         opacity: isActive ? 1 : 0.75,
@@ -38,8 +38,9 @@ const Navigation = () => {
 
   return (
     <Flex {...navBarStyle}>
+      <NavLink to="/" exact>{t?.dashboard?.nav_label || 'Dashboard'}</NavLink>
       <NavLink to="/create">{t.ui.menu.new_analysis}</NavLink>
-      <NavLink to="/" exact>{t.ui.menu.archive}</NavLink>
+      <NavLink to="/systems" exact>{t.ui.menu.archive}</NavLink>
       {canWrite && <NavLink to="/projects">{t?.projects?.title || 'Proyectos'}</NavLink>}
       <NavLink to="/reports">{t.ui.menu.reports}</NavLink>
       {isAdmin && <NavLink to="/users">{t.ui.menu.users}</NavLink>}

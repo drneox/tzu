@@ -17,6 +17,7 @@ class InformationSystemBase(BaseModel):
     description: str | None = None
     project_id: Optional[UUID] = None
     project_name: Optional[str] = None
+    archived: bool = False
   
 
 class InformationSystemBaseCreate(InformationSystemCreate):
@@ -133,6 +134,7 @@ class InformationSystem(InformationSystemBase):
     datetime: datetime
     diagram: str | None = None
     diagram_input_type: str | None = None  # "image" | "text"
+    archived: bool = False
     threats: List[Threat] = []
 
 class ThreatWithSystem(BaseModel):
@@ -264,3 +266,61 @@ class InformationSystemUpdate(BaseModel):
     description: Optional[str] = None
     project_id: Optional[UUID] = None
     project_name_inline: Optional[str] = None  # Creates a new project inline if provided
+
+
+# =====================================================
+# DASHBOARD SCHEMAS
+# =====================================================
+
+class ThreatsByLevel(BaseModel):
+    CRITICAL: int = 0
+    HIGH: int = 0
+    MEDIUM: int = 0
+    LOW: int = 0
+    UNKNOWN: int = 0
+
+
+class SystemExposure(BaseModel):
+    id: str
+    title: str
+    project_name: Optional[str] = None
+    critical_count: int
+    high_count: int
+    total_threats: int
+
+
+class ProjectExposure(BaseModel):
+    id: Optional[str] = None
+    name: str
+    critical_count: int
+    high_count: int
+    total_threats: int
+    system_count: int
+
+
+class StandardsCoverage(BaseModel):
+    NIST: float = 0.0
+    ISO27001: float = 0.0
+    ASVS: float = 0.0
+    MASVS: float = 0.0
+    SBS: float = 0.0
+
+
+class StandardsRemediation(BaseModel):
+    NIST: float = 0.0
+    ISO27001: float = 0.0
+    ASVS: float = 0.0
+    MASVS: float = 0.0
+    SBS: float = 0.0
+
+
+class DashboardStats(BaseModel):
+    total_systems: int
+    total_threats: int
+    threats_by_level: ThreatsByLevel
+    remediation_rate: float
+    top_systems: List[SystemExposure]
+    top_projects: List[ProjectExposure] = []
+    standards_coverage: StandardsCoverage
+    standards_remediation: StandardsRemediation
+    filtered_by_project: Optional[str] = None

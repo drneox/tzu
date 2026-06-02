@@ -142,7 +142,8 @@
     "table": {
       "title": "Title",
       "description": "Description", 
-      "date": "Date"
+      "date": "Date",
+      "actions": "Actions"
     },
     "form": {
       "title_placeholder": "Title",
@@ -152,7 +153,7 @@
       "error_creating_title": "Creation Error",
       "success_creating": "System created successfully! Now upload a diagram.",
       "success_creating_title": "Success!",
-      "new_threat_modeling": "New Threat Modeling"
+      "new_threat_modeling": "Create a new evaluation"
     },
     "menu": {
       "new_analysis": "New Analysis",
@@ -364,5 +365,66 @@
     "created": "Project created",
     "updated": "Project updated",
     "filterAll": "All projects",
-    "project": "Project"  }
+    "project": "Project"  },
+  "dashboard": {
+    "title": "Security Dashboard",
+    "nav_label": "Dashboard",
+    "filter_all": "All projects",
+    "error_title": "Error loading data",
+    "error_body": "Could not load dashboard statistics.",
+    "retry": "Retry",
+    "empty_title": "No evaluations registered yet",
+    "empty_body": "Create your first evaluation to see your security overview.",
+    "empty_cta": "Create your first evaluation",
+    "kpis": {
+      "title": "Security Overview",
+      "total_systems": "Evaluations",
+      "total_threats": "Threats",
+      "critical": "Critical",
+      "high": "High",
+      "remediation_rate": "Remediation Rate"
+    },
+    "risk_chart": {
+      "title": "Risk Distribution",
+      "no_data": "No threat data available"
+    },
+    "top_systems": {
+      "title": "Evaluations with most Threats (Top 5)",
+      "system_col": "Evaluation",
+      "critical_col": "CRIT",
+      "high_col": "HIGH",
+      "total_col": "Total",
+      "no_data": "No exposed evaluations found",
+      "no_risk": "No critical or high threats"
+    },
+    "top_projects": {
+      "title": "Projects with most Threats (Top 5)",
+      "project_col": "Project",
+      "critical_col": "CRIT",
+      "high_col": "HIGH",
+      "total_col": "Total",
+      "systems_col": "Evaluations",
+      "no_data": "No projects with threats found",
+      "no_risk": "No critical or high threats"
+    },
+    "standards": {
+      "title": "Standards Coverage",
+      "no_tags": "No security controls assigned yet",
+      "legend_coverage": "Coverage",
+      "legend_remediation": "Remediated"
+    },
+    "trends": {
+      "title": "Historical Trends",
+      "placeholder": "Historical trend data will be available in a future version"
+    }
+  },
+  "index": {
+    "show_archived": "Show archived",
+    "archive": "Archive",
+    "unarchive": "Unarchive",
+    "archived_badge": "Archived",
+    "archived_success": "Evaluation archived",
+    "unarchived_success": "Evaluation unarchived",
+    "archive_error": "Error changing archive state"
+  }
 }

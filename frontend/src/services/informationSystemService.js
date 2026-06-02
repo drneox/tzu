@@ -10,15 +10,16 @@ import apiClient from './apiClient';
  * @param {number} limit - Cantidad máxima de sistemas a recuperar
  * @returns {Promise} - Promise con los datos de sistemas y conteo total
  */
-export const getInformationSystems = async (skip = 0, limit = 10, project_id = null) => {
+export const getInformationSystems = async (skip = 0, limit = 10, project_id = null, include_archived = false) => {
   try {
     const projectParam = project_id ? `&project_id=${project_id}` : '';
+    const archivedParam = include_archived ? '&include_archived=true' : '';
     // Primero obtenemos el total de sistemas (sin límite)
-    const countResponse = await apiClient.get(`/information_systems?skip=0&limit=1000${projectParam}`);
+    const countResponse = await apiClient.get(`/information_systems?skip=0&limit=1000${projectParam}${archivedParam}`);
     const totalCount = countResponse.data.length;
     
     // Luego obtenemos los datos paginados
-    const dataResponse = await apiClient.get(`/information_systems?skip=${skip}&limit=${limit}${projectParam}`);
+    const dataResponse = await apiClient.get(`/information_systems?skip=${skip}&limit=${limit}${projectParam}${archivedParam}`);
     
     // Agregamos el conteo total a la respuesta
     dataResponse.totalCount = totalCount;
@@ -129,6 +130,21 @@ export const updateInformationSystem = async (id, data) => {
     return response;
   } catch (error) {
     console.error('Error al actualizar sistema de información:', error);
+    throw error;
+  }
+};
+
+/**
+ * Toggle archive state of an information system (admin only)
+ * @param {string} id - Information system UUID
+ * @returns {Promise} - { archived: boolean }
+ */
+export const archiveInformationSystem = async (id) => {
+  try {
+    const response = await apiClient.patch(`/information_systems/${id}/archive`);
+    return response.data;
+  } catch (error) {
+    console.error('Error al archivar sistema de información:', error);
     throw error;
   }
 };

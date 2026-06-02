@@ -2,7 +2,7 @@
 export const headerContainer = {
   as: "header",
   align: "center",
-  px: "1.25rem",
+  px: "0.75rem",
   h: "64px",
   bg: "#00243c",
   color: "#ffa833",
@@ -15,7 +15,7 @@ export const contentContainer = {
   align: "center",
   justify: "space-between",
   width: "100%",
-  gap: 6
+  gap: 3
 };
 
 // Bloque logo + nombre
@@ -29,8 +29,9 @@ export const topRowContainer = {
 export const navBarStyle = {
   as: "nav",
   align: "center",
-  gap: 1,
-  flex: 1
+  gap: 0,
+  flex: 1,
+  justify: "center"
 };
 
 // Estilo para el botón del menú de usuario
