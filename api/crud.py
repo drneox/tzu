@@ -22,6 +22,9 @@ def get_all_threats(db: Session, skip: int = 0, limit: int = 100, system_id: Opt
         joinedload(models.Threat.information_system)
     )
     
+    # Exclude threats from archived systems
+    query = query.join(models.InformationSystem).filter(models.InformationSystem.archived == False)
+
     # Filter by information system
     if system_id:
         try:
@@ -356,8 +359,10 @@ def update_threat_risk(db: Session, threat_id: str, data: dict):
         db.refresh(remediation)
     return threat
 
-def get_information_systems(db: Session, skip: int = 0, limit: int = 100, project_id: Optional[UUID] = None):
+def get_information_systems(db: Session, skip: int = 0, limit: int = 100, project_id: Optional[UUID] = None, include_archived: bool = False):
     query = db.query(models.InformationSystem)
+    if not include_archived:
+        query = query.filter(models.InformationSystem.archived == False)
     if project_id is not None:
         query = query.filter(models.InformationSystem.project_id == project_id)
     return query.order_by(models.InformationSystem.datetime.desc()).offset(skip).limit(limit).all()

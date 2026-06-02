@@ -28,6 +28,7 @@ import LoadingScreen from './components/LoadingScreen';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import Index from './components/Index';
+import Dashboard from './components/Dashboard';
 import List from './components/List';
 import Analysis from './components/Analysis';
 import Reports from './components/Reports';
@@ -70,12 +71,21 @@ function AppContent() {
           
           {/* Rutas protegidas - requieren autenticación */}
           <Route 
-            path="/" 
+            path="/"
+            element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            } 
+          />
+
+          <Route
+            path="/systems"
             element={
               <ProtectedRoute>
                 <Index />
               </ProtectedRoute>
-            } 
+            }
           />
           
           <Route 

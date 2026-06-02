@@ -76,3 +76,14 @@ export const getAuditLog = async (params = {}) => {
   const response = await apiClient.get('/admin/audit-log', { params });
   return response.data;
 };
+
+// ========================================
+// DASHBOARD FUNCTIONS
+// ========================================
+
+export const getDashboardStats = async (projectId = null) => {
+  const params = {};
+  if (projectId) params.project_id = projectId;
+  const response = await apiClient.get('/dashboard/stats', { params });
+  return response.data;
+};

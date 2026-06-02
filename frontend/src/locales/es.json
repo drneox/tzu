@@ -142,7 +142,8 @@
     "table": {
       "title": "Título",
       "description": "Descripción", 
-      "date": "Fecha"
+      "date": "Fecha",
+      "actions": "Acciones"
     },
     "form": {
       "title_placeholder": "Título",
@@ -152,7 +153,7 @@
       "error_creating_title": "Error de Creación",
       "success_creating": "¡Sistema creado exitosamente! Ahora sube un diagrama.",
       "success_creating_title": "¡Éxito!",
-      "new_threat_modeling": "Nuevo Threat Modeling"
+      "new_threat_modeling": "Crear una nueva evaluación"
     },
     "menu": {
       "new_analysis": "Nuevo Análisis",
@@ -364,5 +365,66 @@
     "created": "Proyecto creado",
     "updated": "Proyecto actualizado",
     "filterAll": "Todos los proyectos",
-    "project": "Proyecto"  }
+    "project": "Proyecto"  },
+  "dashboard": {
+    "title": "Security Dashboard",
+    "nav_label": "Dashboard",
+    "filter_all": "Todos los proyectos",
+    "error_title": "Error al cargar datos",
+    "error_body": "No se pudieron cargar las estadísticas del dashboard.",
+    "retry": "Reintentar",
+    "empty_title": "Aún no hay evaluaciones registradas",
+    "empty_body": "Crea tu primera evaluación para ver el resumen de seguridad.",
+    "empty_cta": "Crea tu primera evaluación",
+    "kpis": {
+      "title": "Resumen de Seguridad",
+      "total_systems": "Evaluaciones",
+      "total_threats": "Amenazas",
+      "critical": "Críticas",
+      "high": "Altas",
+      "remediation_rate": "Tasa de Remediación"
+    },
+    "risk_chart": {
+      "title": "Distribución de Riesgo",
+      "no_data": "Sin datos de amenazas"
+    },
+    "top_systems": {
+      "title": "Evaluaciones con más Amenazas (Top 5)",
+      "system_col": "Evaluación",
+      "critical_col": "CRIT",
+      "high_col": "ALTO",
+      "total_col": "Total",
+      "no_data": "No hay evaluaciones expuestas",
+      "no_risk": "Sin amenazas críticas o altas"
+    },
+    "top_projects": {
+      "title": "Proyectos con más Amenazas (Top 5)",
+      "project_col": "Proyecto",
+      "critical_col": "CRIT",
+      "high_col": "ALTO",
+      "total_col": "Total",
+      "systems_col": "Evaluaciones",
+      "no_data": "No hay proyectos con amenazas",
+      "no_risk": "Sin amenazas críticas o altas"
+    },
+    "standards": {
+      "title": "Cobertura de Estándares",
+      "no_tags": "No hay controles asignados aún",
+      "legend_coverage": "Cobertura",
+      "legend_remediation": "Remediadas"
+    },
+    "trends": {
+      "title": "Tendencia Histórica",
+      "placeholder": "El historial de tendencias estará disponible en una versión futura"
+    }
+  },
+  "index": {
+    "show_archived": "Mostrar archivados",
+    "archive": "Archivar",
+    "unarchive": "Desarchivar",
+    "archived_badge": "Archivado",
+    "archived_success": "Evaluación archivada",
+    "unarchived_success": "Evaluación desarchivada",
+    "archive_error": "Error al cambiar estado de archivo"
+  }
 }

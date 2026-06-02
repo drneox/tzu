@@ -230,6 +230,7 @@ class InformationSystem(Base):
     diagram_input_type = Column(String, nullable=True)
     created_by = Column(UUID, ForeignKey("users.id"), nullable=True)
     project_id = Column(UUID, ForeignKey("projects.id", ondelete="SET NULL"), nullable=True)
+    archived = Column(Boolean, default=False, nullable=False)
 
     threats = relationship("Threat", back_populates="information_system", cascade="all, delete-orphan")
     project = relationship("Project", back_populates="information_systems")

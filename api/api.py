@@ -508,6 +508,7 @@ async def read_information_systems(
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(100, ge=1, le=1000, description="Maximum number of records to return"),
     project_id: Optional[str] = Query(None, description="Filter by project UUID"),
+    include_archived: bool = Query(False, description="Include archived systems"),
     db: Session = Depends(get_db), 
     current_user: models.User = Depends(get_current_active_user)
 ):
@@ -517,7 +518,7 @@ async def read_information_systems(
     filter_project_id = None
     if project_id is not None:
         filter_project_id = validate_uuid(project_id, "project_id")
-    information_systems = crud.get_information_systems(db, skip=skip, limit=limit, project_id=filter_project_id)
+    information_systems = crud.get_information_systems(db, skip=skip, limit=limit, project_id=filter_project_id, include_archived=include_archived)
     return information_systems
 
 @app.get(
@@ -767,6 +768,28 @@ async def delete_information_system(
     db.delete(system)
     db.commit()
     return {"message": "Information system deleted successfully"}
+
+@app.patch(
+    "/information_systems/{information_system_id}/archive",
+    tags=["Information Systems"],
+    summary="Archive or unarchive an Information System",
+    description="Toggle archived state of an information system (admin only)"
+)
+async def toggle_archive_information_system(
+    information_system_id: str = Path(..., description="Information system UUID"),
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_admin_user)
+):
+    """Soft-delete: archive or unarchive an information system. Admin only."""
+    system_uuid = validate_uuid(information_system_id, "information system ID")
+    system = db.query(models.InformationSystem).filter(models.InformationSystem.id == system_uuid).first()
+    if not system:
+        raise HTTPException(status_code=404, detail="Information system not found")
+    system.archived = not system.archived
+    db.commit()
+    db.refresh(system)
+    state = "archived" if system.archived else "unarchived"
+    return {"message": f"Information system {state} successfully", "archived": system.archived}
 
 @app.get(
     "/threat/{threat_id}", 
@@ -1909,6 +1932,150 @@ async def internal_error_handler(request, exc):
         status_code=500,
         content={"detail": "Internal server error"}
     )
+
+# =====================================================
+# DASHBOARD ENDPOINTS
+# =====================================================
+
+@app.get(
+    "/dashboard/stats",
+    response_model=schemas.DashboardStats,
+    tags=["Dashboard"],
+    summary="Get Dashboard Statistics",
+    description="Aggregate security statistics: KPIs, risk distribution, top exposed systems, and standards coverage.",
+)
+async def get_dashboard_stats(
+    project_id: Optional[str] = Query(None, description="Filter all stats to a single project UUID"),
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_active_user),
+):
+    """
+    Returns aggregated dashboard statistics in 4 passes:
+    1. Load InformationSystem objects with eager-loaded threats → risk + remediation
+    2. KPI aggregation: threats_by_level and remediation_rate
+    3. Top-5 systems sorted by (CRITICAL+HIGH) desc, total_threats desc
+    4. Standards coverage: prefix-based tag matching per standard
+    """
+    # Validate project_id and verify it exists
+    filter_project_id = None
+    if project_id is not None:
+        filter_project_id = validate_uuid(project_id, "project_id")
+        project = db.query(models.Project).filter(models.Project.id == filter_project_id).first()
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+
+    # Pass 1: Load systems with eager-loaded relationships
+    query = db.query(models.InformationSystem).options(
+        joinedload(models.InformationSystem.threats).joinedload(models.Threat.risk),
+        joinedload(models.InformationSystem.threats).joinedload(models.Threat.remediation),
+    ).filter(models.InformationSystem.archived == False)
+    if filter_project_id is not None:
+        query = query.filter(models.InformationSystem.project_id == filter_project_id)
+    systems = query.all()
+
+    total_systems = len(systems)
+    all_threats = [t for s in systems for t in s.threats]
+    total_threats = len(all_threats)
+
+    # Pass 2: KPI aggregation
+    by_level: Dict[str, int] = {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0, "UNKNOWN": 0}
+    remediated_count = 0
+    for threat in all_threats:
+        level = threat.current_risk_level or "UNKNOWN"
+        by_level[level if level in by_level else "UNKNOWN"] += 1
+        if threat.remediation and threat.remediation.status:
+            remediated_count += 1
+    remediation_rate = round(remediated_count / total_threats * 100, 2) if total_threats > 0 else 0.0
+
+    # Pass 3: Top-5 systems
+    system_exposures = []
+    for s in systems:
+        crit = sum(1 for t in s.threats if (t.current_risk_level or "UNKNOWN") == "CRITICAL")
+        high = sum(1 for t in s.threats if (t.current_risk_level or "UNKNOWN") == "HIGH")
+        system_exposures.append(schemas.SystemExposure(
+            id=str(s.id),
+            title=s.title,
+            project_name=s.project_name,
+            critical_count=crit,
+            high_count=high,
+            total_threats=len(s.threats),
+        ))
+    system_exposures.sort(key=lambda x: (x.critical_count + x.high_count, x.total_threats), reverse=True)
+    top_systems = system_exposures[:5]
+
+    # Pass 3b: Top-5 projects (only when not filtered by project)
+    top_projects: list = []
+    if filter_project_id is None:
+        proj_map: Dict[str, dict] = {}
+        for s in systems:
+            pid = str(s.project_id) if s.project_id else None
+            pname = s.project_name or "Sin proyecto"
+            key = pid or "__none__"
+            if key not in proj_map:
+                proj_map[key] = {"id": pid, "name": pname, "critical": 0, "high": 0, "total": 0, "count": 0}
+            crit_s = sum(1 for t in s.threats if (t.current_risk_level or "UNKNOWN") == "CRITICAL")
+            high_s = sum(1 for t in s.threats if (t.current_risk_level or "UNKNOWN") == "HIGH")
+            proj_map[key]["critical"] += crit_s
+            proj_map[key]["high"] += high_s
+            proj_map[key]["total"] += len(s.threats)
+            proj_map[key]["count"] += 1
+        proj_list = [
+            schemas.ProjectExposure(
+                id=v["id"],
+                name=v["name"],
+                critical_count=v["critical"],
+                high_count=v["high"],
+                total_threats=v["total"],
+                system_count=v["count"],
+            )
+            for v in proj_map.values()
+        ]
+        proj_list.sort(key=lambda x: (x.critical_count + x.high_count, x.total_threats), reverse=True)
+        top_projects = proj_list[:5]
+
+    # Pass 4: Standards coverage (via STANDARDS_MAP lookup)
+    from standards import get_standard_from_tag_id, normalize_tag_for_lookup
+    import re as _re
+    _tag_suffix_re = _re.compile(r'\(([^)]+)\)\s*$')
+    TRACKED_STANDARDS = ["NIST", "ISO27001", "ASVS", "MASVS", "SBS"]
+    coverage: Dict[str, float] = {k: 0.0 for k in TRACKED_STANDARDS}
+    remediation_by_std: Dict[str, float] = {k: 0.0 for k in TRACKED_STANDARDS}
+    if total_threats > 0:
+        counts: Dict[str, int] = {k: 0 for k in TRACKED_STANDARDS}
+        remediated_counts: Dict[str, int] = {k: 0 for k in TRACKED_STANDARDS}
+        for threat in all_threats:
+            tags = threat.remediation.control_tags_list if threat.remediation else []
+            matched_stds: set = set()
+            for tag in tags:
+                # Primary: extract standard from "(STANDARD)" suffix, e.g. "SBS-504-4 (SBS)" → "SBS"
+                m = _tag_suffix_re.search(tag)
+                if m and m.group(1) in TRACKED_STANDARDS:
+                    matched_stds.add(m.group(1))
+                else:
+                    # Fallback: lookup by tag ID in STANDARDS_MAP (for tags without suffix)
+                    std = get_standard_from_tag_id(normalize_tag_for_lookup(tag))
+                    if std in TRACKED_STANDARDS:
+                        matched_stds.add(std)
+            is_remediated = bool(threat.remediation and threat.remediation.status)
+            for std in matched_stds:
+                counts[std] += 1
+                if is_remediated:
+                    remediated_counts[std] += 1
+        coverage = {k: round(counts[k] / total_threats * 100, 2) for k in TRACKED_STANDARDS}
+        remediation_by_std = {k: round(remediated_counts[k] / total_threats * 100, 2) for k in TRACKED_STANDARDS}
+
+    return schemas.DashboardStats(
+        total_systems=total_systems,
+        total_threats=total_threats,
+        threats_by_level=schemas.ThreatsByLevel(**by_level),
+        remediation_rate=remediation_rate,
+        top_systems=top_systems,
+        top_projects=top_projects,
+        standards_coverage=schemas.StandardsCoverage(**coverage),
+        standards_remediation=schemas.StandardsRemediation(**remediation_by_std),
+        filtered_by_project=str(filter_project_id) if filter_project_id else None,
+    )
+
 
 # =====================================================
 # APPLICATION STARTUP

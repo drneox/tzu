@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {getInformationSystems} from "../services";
+import { archiveInformationSystem } from "../services/informationSystemService";
 import { getProjects } from "../services/projectService";
+import { useAuth } from "../context/AuthContext";
 import { 
   Flex, 
   TableContainer, 
@@ -17,13 +19,22 @@ import {
   Box,
   Select,
   Spinner,
-  Badge
+  Badge,
+  Switch,
+  FormLabel,
+  useToast,
+  Tooltip,
+  IconButton,
 } from "@chakra-ui/react";
 import { ChevronLeftIcon, ChevronRightIcon } from '@chakra-ui/icons';
+import { MdArchive, MdUnarchive } from 'react-icons/md';
 import { useLocalization } from '../hooks/useLocalization';
 
 const Index = () => {
   const { t } = useLocalization();
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
+  const toast = useToast();
   const [isLoading, setIsLoading] = useState(true);
   const [serviceData, setServiceData] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
@@ -32,16 +43,18 @@ const Index = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [projects, setProjects] = useState([]);
   const [selectedProjectId, setSelectedProjectId] = useState('');
+  const [showArchived, setShowArchived] = useState(false);
+  const [archivingId, setArchivingId] = useState(null);
 
   useEffect(() => {
     getProjects().then((res) => setProjects(res.data)).catch(() => {});
   }, []);
 
-  const fetchData = async (page, size, projectId) => {
+  const fetchData = async (page, size, projectId, includeArchived) => {
     setIsLoading(true);
     try {
       const skip = (page - 1) * size;
-      const res = await getInformationSystems(skip, size, projectId || null);
+      const res = await getInformationSystems(skip, size, projectId || null, includeArchived);
       setServiceData(res.data);
       
       if (res.totalCount !== undefined) {
@@ -70,8 +83,8 @@ const Index = () => {
   }, [totalSystems, pageSize]);
 
   useEffect(() => {
-    fetchData(currentPage, pageSize, selectedProjectId);
-  }, [currentPage, pageSize, selectedProjectId]);
+    fetchData(currentPage, pageSize, selectedProjectId, showArchived);
+  }, [currentPage, pageSize, selectedProjectId, showArchived]);
 
   const handlePageChange = (newPage) => {
     if (newPage >= 1 && newPage <= totalPages) {
@@ -87,6 +100,33 @@ const Index = () => {
   const handleProjectFilterChange = (event) => {
     setSelectedProjectId(event.target.value);
     setCurrentPage(1);
+  };
+
+  const handleToggleArchive = async (id, currentArchived) => {
+    setArchivingId(id);
+    try {
+      const result = await archiveInformationSystem(id);
+      const newState = result.archived;
+      toast({
+        title: newState
+          ? (t?.index?.archived_success || 'Evaluación archivada')
+          : (t?.index?.unarchived_success || 'Evaluación desarchivada'),
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      });
+      // Refresh list
+      fetchData(currentPage, pageSize, selectedProjectId, showArchived);
+    } catch (err) {
+      toast({
+        title: t?.index?.archive_error || 'Error al cambiar estado de archivo',
+        status: 'error',
+        duration: 4000,
+        isClosable: true,
+      });
+    } finally {
+      setArchivingId(null);
+    }
   };
 
   if (isLoading && serviceData.length === 0) {
@@ -107,22 +147,38 @@ const Index = () => {
       style={{ marginBottom: "60px" }}
     >
       <Box width="100%" maxWidth="1000px">
-        {/* Project filter */}
-        <Flex mb={3} align="center" gap={2}>
-          <Text fontSize="sm" fontWeight="medium" whiteSpace="nowrap">
-            {t?.projects?.project || 'Proyecto'}:
-          </Text>
-          <Select
-            value={selectedProjectId}
-            onChange={handleProjectFilterChange}
-            size="sm"
-            maxWidth="260px"
-          >
-            <option value="">{t?.projects?.filterAll || 'Todos los proyectos'}</option>
-            {projects.map((p) => (
-              <option key={p.id} value={p.id}>{p.name}</option>
-            ))}
-          </Select>
+        {/* Project filter + archive toggle */}
+        <Flex mb={3} align="center" gap={4} wrap="wrap">
+          <Flex align="center" gap={2}>
+            <Text fontSize="sm" fontWeight="medium" whiteSpace="nowrap">
+              {t?.projects?.project || 'Proyecto'}:
+            </Text>
+            <Select
+              value={selectedProjectId}
+              onChange={handleProjectFilterChange}
+              size="sm"
+              maxWidth="260px"
+            >
+              <option value="">{t?.projects?.filterAll || 'Todos los proyectos'}</option>
+              {projects.map((p) => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </Select>
+          </Flex>
+          {isAdmin && (
+            <Flex align="center" gap={2}>
+              <FormLabel htmlFor="show-archived" mb="0" fontSize="sm" fontWeight="medium" whiteSpace="nowrap">
+                {t?.index?.show_archived || 'Mostrar archivados'}
+              </FormLabel>
+              <Switch
+                id="show-archived"
+                isChecked={showArchived}
+                onChange={(e) => { setShowArchived(e.target.checked); setCurrentPage(1); }}
+                colorScheme="teal"
+                size="sm"
+              />
+            </Flex>
+          )}
         </Flex>
 
         <TableContainer>
@@ -133,12 +189,13 @@ const Index = () => {
                 <Th color="white" p="3" shadow="md">{t?.ui?.table?.description || 'Descripción'}</Th>
                 <Th color="white" p="3" shadow="md">{t?.projects?.project || 'Proyecto'}</Th>
                 <Th color="white" p="3" shadow="md" maxWidth='180px'>{t?.ui?.table?.date || 'Fecha'}</Th>
+                {isAdmin && <Th color="white" p="3" shadow="md">{t?.ui?.table?.actions || 'Acciones'}</Th>}
               </Tr>
             </Thead>
             <Tbody>
               {serviceData.length === 0 ? (
                 <Tr>
-                  <Td colSpan={4} textAlign="center" py={6}>
+                  <Td colSpan={isAdmin ? 5 : 4} textAlign="center" py={6}>
                     {t?.ui?.no_systems || 'No hay sistemas disponibles'}
                   </Td>
                 </Tr>
@@ -146,8 +203,17 @@ const Index = () => {
                 serviceData.map(data => {
                   const dateTime = new Date(data.datetime).toLocaleString();
                   return (
-                    <Tr key={data.id}>
-                      <Td><Link to={`analysis/${data.id}`} style={{ color: 'blue.600', fontWeight: 'medium' }}>{String(data.title)}</Link></Td>
+                    <Tr key={data.id} opacity={data.archived ? 0.6 : 1}>
+                      <Td>
+                        <Flex align="center" gap={2} wrap="wrap">
+                          <Link to={`/analysis/${data.id}`} style={{ color: 'blue.600', fontWeight: 'medium' }}>{String(data.title)}</Link>
+                          {data.archived && (
+                            <Badge colorScheme="gray" borderRadius="md" px={2}>
+                              {t?.index?.archived_badge || 'Archivado'}
+                            </Badge>
+                          )}
+                        </Flex>
+                      </Td>
                       <Td>{data.description}</Td>
                       <Td>
                         {data.project_name
@@ -156,13 +222,28 @@ const Index = () => {
                         }
                       </Td>
                       <Td>{dateTime}</Td>
+                      {isAdmin && (
+                        <Td>
+                          <Tooltip label={data.archived ? (t?.index?.unarchive || 'Desarchivar') : (t?.index?.archive || 'Archivar')}>
+                            <IconButton
+                              aria-label={data.archived ? (t?.index?.unarchive || 'Desarchivar') : (t?.index?.archive || 'Archivar')}
+                              icon={data.archived ? <MdUnarchive size="16" /> : <MdArchive size="16" />}
+                              size="xs"
+                              variant="ghost"
+                              colorScheme={data.archived ? 'teal' : 'gray'}
+                              isLoading={archivingId === data.id}
+                              onClick={() => handleToggleArchive(data.id, data.archived)}
+                            />
+                          </Tooltip>
+                        </Td>
+                      )}
                     </Tr>
                   );
                 })
               )}
               {isLoading && (
                 <Tr>
-                  <Td colSpan={4} textAlign="center" py={4}>
+                  <Td colSpan={isAdmin ? 5 : 4} textAlign="center" py={4}>
                     <Spinner size="sm" color="blue.500" mr={2} />
                     {t?.ui?.loading_more || 'Cargando más resultados...'}
                   </Td>
