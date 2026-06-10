@@ -1,6 +1,7 @@
 import json
 from types import SimpleNamespace
 import os
+import logging
 from any_llm import completion
 import control_tags
 import standards
@@ -9,6 +10,13 @@ from stride_validator import get_valid_stride_categories
 
 # Docker Compose pasa las variables de entorno automáticamente
 # No necesitamos load_dotenv() ya que las variables están disponibles via env
+
+logger = logging.getLogger("tzu_ai")
+if not logger.handlers:
+    handler = logging.StreamHandler()
+    handler.setLevel(logging.DEBUG)
+    logger.addHandler(handler)
+    logger.setLevel(logging.DEBUG)
 
 def generate_control_tags_examples():
     """
@@ -199,10 +207,13 @@ Use the following JSON output structure:
         
         # Verify that object has expected structure
         if not hasattr(threat_analysis_object, 'threats'):
-          # Create object with correct structure but no threats
-          empty_obj = SimpleNamespace()
-          empty_obj.threats = []
-          return empty_obj
+          raise ValueError("AI response JSON does not include 'threats'")
+
+        if not isinstance(threat_analysis_object.threats, list):
+          raise ValueError("AI response JSON has invalid 'threats' format")
+
+        if len(threat_analysis_object.threats) == 0:
+          raise ValueError("AI response JSON includes an empty 'threats' list")
                 # Post-process: validate and correct control_tags in every threat
         for threat in threat_analysis_object.threats:
             if hasattr(threat, 'remediation') and hasattr(threat.remediation, 'control_tags'):
@@ -211,20 +222,13 @@ Use the following JSON output structure:
                     threat.remediation.control_tags = validate_and_correct_control_tags(raw_tags)
         return threat_analysis_object
       except json.JSONDecodeError as e:
-        # Retornar objeto vacío con estructura correcta
-        empty_obj = SimpleNamespace()
-        empty_obj.threats = []
-        return empty_obj
+        logger.exception("AI response is not valid JSON: %s", e)
+        raise ValueError("AI response is not valid JSON") from e
     else:
-      # Retornar objeto vacío con estructura correcta
-      empty_obj = SimpleNamespace()
-      empty_obj.threats = []
-      return empty_obj
+      raise ValueError("AI response did not contain a JSON object")
   except Exception as e:
-    # Retornar objeto vacío con estructura correcta
-    empty_obj = SimpleNamespace()
-    empty_obj.threats = []
-    return empty_obj
+    logger.exception("AI analysis failed: %s", e)
+    raise
 
 
 

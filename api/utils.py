@@ -5,7 +5,7 @@ import uuid
 from pathlib import Path
 from PIL import Image
 
-MAX_DIMENSION = 4096
+MAX_DIMENSION = 1280
 
 IMAGE_EXTENSIONS = {'.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp'}
 TEXT_EXTENSIONS = {'.txt', '.md', '.xml', '.json', '.svg'}
@@ -68,19 +68,27 @@ def process_file(file):
 
 def _process_image(raw_bytes, original_filename):
     """Convert raw image bytes to base64 JPEG and save to disk."""
-    img = Image.open(io.BytesIO(raw_bytes)).convert("RGB")
-
-    if img.width > MAX_DIMENSION or img.height > MAX_DIMENSION:
-        img.thumbnail((MAX_DIMENSION, MAX_DIMENSION), Image.LANCZOS)
-        print(f"Imagen redimensionada a {img.width}x{img.height}px")
+    # Save original full-quality copy to disk for the report.
+    img_display = Image.open(io.BytesIO(raw_bytes)).convert("RGB")
 
     unique_id = str(uuid.uuid4())
     saved_filename = f"{unique_id}.jpg"
     file_path = f"diagrams/{saved_filename}"
-    img.save(file_path, format="JPEG", quality=85, optimize=True)
+    img_display.save(file_path, format="JPEG", quality=85, optimize=True)
+
+    # Resize by longest side preserving aspect ratio (handles both landscape and portrait)
+    # Keep RGB colour — it helps the LLM distinguish components, trust boundaries,
+    # and data-flow arrows in architecture diagrams.  Grayscale loses too much info.
+    img_llm = Image.open(io.BytesIO(raw_bytes)).convert("RGB")
+    longest = max(img_llm.width, img_llm.height)
+    if longest > MAX_DIMENSION:
+        ratio = MAX_DIMENSION / longest
+        new_size = (int(img_llm.width * ratio), int(img_llm.height * ratio))
+        img_llm = img_llm.resize(new_size, Image.LANCZOS)
+        print(f"Imagen reducida para LLM a {img_llm.width}x{img_llm.height}px (RGB)")
 
     buf = io.BytesIO()
-    img.save(buf, format="JPEG", quality=85, optimize=True)
+    img_llm.save(buf, format="JPEG", quality=85, optimize=True)
     image_b64 = base64.b64encode(buf.getvalue()).decode('utf-8')
 
     print(f"Imagen '{original_filename}' guardada como '{saved_filename}'")
