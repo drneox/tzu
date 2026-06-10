@@ -56,6 +56,9 @@ setup_environment() {
         echo "🔒 JWT tokens will remain valid across restarts"
     fi
     
+    # Strip CRLF from .env before sourcing (safe no-op if already LF)
+    sed -i 's/\r$//' "$ENV_FILE"
+
     # Export environment variables
     set -a
     source "$ENV_FILE"
