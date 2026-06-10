@@ -48,23 +48,38 @@ In cybersecurity—as in ancient warfare—**preparation and intelligence make t
 
 ### 🐳 Docker Deployment (Recommended)
 
+> **Prerequisites:** [Docker Desktop](https://www.docker.com/products/docker-desktop) must be installed and running. On Windows, enable the **WSL2 backend** in Docker Desktop settings.
+
 The fastest way to get TZU running is with our automated setup script:
 
+**Linux / macOS / WSL2:**
 ```bash
 # 1. Clone the repository
 git clone https://github.com/drneox/tzu
 cd tzu
 
 # 2. Configure environment (optional but recommended)
-# Edit .env file to add your API key and timezone
 cp .env.example .env
-# Then edit .env and configure:
-# - Set your AI provider key:
-#   * AI_API_KEY=your_api_key_here
+# Edit .env and set:
+# - AI_API_KEY=your_api_key_here
 # - TZ=your_timezone (e.g., America/New_York, Europe/London, America/Lima)
 
 # 3. Run the automated setup script
 ./start.sh
+```
+
+**Windows (PowerShell):**
+```powershell
+# 1. Clone the repository
+git clone https://github.com/drneox/tzu
+cd tzu
+
+# 2. Configure environment
+copy .env.example .env
+# Edit .env and set AI_API_KEY and TZ
+
+# 3. Run the Windows setup script
+.\start.ps1
 ```
 
 The script will automatically:
