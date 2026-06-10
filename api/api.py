@@ -650,7 +650,19 @@ async def evaluate_system_diagram(
         )
 
         # Get AI analysis
-        result = clientAI(content, content_type)
+        try:
+            result = clientAI(content, content_type)
+        except ValueError as e:
+            logger.warning("AI analysis returned an invalid response: %s", e)
+            return {
+                "information_system": db_information_system,
+                "message": (
+                    "No se pudo interpretar la respuesta del modelo de IA. "
+                    "El diagrama fue guardado, pero no se generaron amenazas automáticamente. "
+                    "Puedes reintentar o crear amenazas manualmente."
+                ),
+                "success": False
+            }
 
         # Validate AI response format
         if isinstance(result, str):
@@ -706,7 +718,7 @@ async def evaluate_system_diagram(
     except Exception as e:
         logger.exception("Error during system diagram evaluation")
         return {
-            "message": "An internal error occurred during diagram processing.",
+            "message": "Se produjo un error inesperado durante el procesamiento del diagrama.",
             "success": False
         }
 
