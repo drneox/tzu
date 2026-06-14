@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import or_, text
 from passlib.context import CryptContext
 from datetime import datetime, timedelta
-from jose import JWTError, jwt
+import jwt
 from typing import Optional, Dict, Union, List
 
 import schemas
