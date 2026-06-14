@@ -248,18 +248,12 @@ def create_user(db: Session, user: schemas.UserCreate, is_admin: bool = False, p
 
 def authenticate_user(db: Session, username: str, password: str):
     user = get_user_by_username(db, username)
-    print(f"[DEBUG] Searching user: {repr(username)} -> Found: {user is not None}")
-    if user:
-        print(f"[DEBUG] Hash in DB: {repr(user.password_hash)}")
     if not user:
         return False
     try:
-        valido = verify_password(password, user.password_hash)
-        print(f"[DEBUG] Resultado verificación hash: {valido}")
-    except Exception as e:
-        print(f"[DEBUG] Error al verificar hash: {e}")
-        return False
-    if not valido:
+        if not verify_password(password, user.password_hash):
+            return False
+    except Exception:
         return False
     return user
 
@@ -517,57 +511,13 @@ def update_remediation(db: Session, remediation_id: str, description: str = None
         raise e
 
 
-# Authentication utility functions
-def verify_password(plain_password, hashed_password):
-    return pwd_context.verify(plain_password, hashed_password)
-
-
-def get_password_hash(password):
-    return pwd_context.hash(password)
-
-
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
-    to_encode = data.copy()
-    now = datetime.utcnow()
-    if expires_delta:
-        expire = now + expires_delta
-    else:
-        expire = now + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-
-    # Keep claims aligned with decode expectations in api.get_current_user
-    to_encode.update({
-        "exp": expire,
-        "iat": now,
-        "nbf": now,
-        "iss": "tzu-api",
-        "aud": "tzu-client",
-    })
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-    return encoded_jwt
-
-
-# CRUD operations for users
-def get_user_by_username(db: Session, username: str):
-    return db.query(models.User).filter(models.User.username == username).first()
-
-
+# Extra user lookup helpers
 def get_user_by_email(db: Session, email: str):
     return db.query(models.User).filter(models.User.email == email).first()
 
 
 def get_user_by_id(db: Session, user_id: UUID):
     return db.query(models.User).filter(models.User.id == user_id).first()
-
-
-def authenticate_user(db: Session, username: str, password: str):
-    user = get_user_by_username(db, username)
-    if not user:
-        return False
-    if not verify_password(password, user.password_hash):
-        return False
-    return user
-
-
 
 
 def get_users(db: Session, skip: int = 0, limit: int = 100):
@@ -578,7 +528,7 @@ def update_user(db: Session, user_id: UUID, user_data: schemas.UserBase):
     db_user = get_user_by_id(db, user_id)
     if not db_user:
         return None
-    
+
     # Allow partial update and hash password if provided
     data = user_data.dict(exclude_unset=True)
     if "password" in data and data["password"]:
@@ -587,20 +537,10 @@ def update_user(db: Session, user_id: UUID, user_data: schemas.UserBase):
     for key, value in data.items():
         if hasattr(db_user, key):
             setattr(db_user, key, value)
-    
+
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
-    return db_user
-
-
-def delete_user(db: Session, user_id: UUID):
-    db_user = get_user_by_id(db, user_id)
-    if not db_user:
-        return None
-    
-    db.delete(db_user)
-    db.commit()
     return db_user
 
 
