@@ -26,7 +26,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from pydantic import BaseModel
 from sqlalchemy.orm import Session, joinedload
-from jose import JWTError, jwt
+import jwt
+from jwt import InvalidTokenError
 
 logger = logging.getLogger(__name__)
 
@@ -172,7 +173,7 @@ async def get_current_user(
         if username is None:
             raise credentials_exception
         token_data = schemas.TokenData(username=username)
-    except JWTError:
+    except InvalidTokenError:
         raise credentials_exception
     
     user = crud.get_user_by_username(db, username=token_data.username)
