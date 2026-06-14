@@ -8,52 +8,33 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  const refreshSession = async () => {
+    try {
+      const userData = await getCurrentUser();
+      setUser(userData);
+      setIsAuthenticated(true);
+      return userData;
+    } catch {
+      setIsAuthenticated(false);
+      setUser(null);
+      return null;
+    }
+  };
+
   useEffect(() => {
     const checkAuth = async () => {
-      const token = localStorage.getItem('token');
-      const storedAuth = localStorage.getItem('isAuthenticated');
-      
-      if (token && storedAuth === 'true') {
-        try {
-          const userData = await getCurrentUser();
-          setUser(userData);
-          setIsAuthenticated(true);
-        } catch (error) {
-          console.error('Error al verificar autenticación:', error);
-          localStorage.removeItem('token');
-          localStorage.removeItem('isAuthenticated');
-          setIsAuthenticated(false);
-        }
-      } else {
-        setIsAuthenticated(false);
-      }
+      await refreshSession();
       setIsLoading(false);
     };
 
     checkAuth();
   }, []);
 
-  const login = (token, userName) => {
-    localStorage.setItem('token', token);
-    localStorage.setItem('isAuthenticated', 'true');
-    setIsAuthenticated(true);
-    
-    // También intentamos obtener los datos del usuario
-    try {
-      getCurrentUser().then(userData => {
-        console.log("Datos de usuario recibidos:", userData);
-        setUser(userData);
-      }).catch(error => {
-        console.error('Error al obtener datos de usuario después del login:', error);
-      });
-    } catch (error) {
-      console.error('Error al obtener datos de usuario:', error);
-    }
+  const login = async () => {
+    await refreshSession();
   };
 
   const logout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('isAuthenticated');
     setIsAuthenticated(false);
     setUser(null);
   };
