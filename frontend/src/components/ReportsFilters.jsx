@@ -29,7 +29,7 @@ const StandardsFilter = ({
     { value: 'MASVS', label: 'MASVS', color: 'purple' },
     { value: 'ISO27001', label: 'ISO 27001', color: 'green' },
     { value: 'NIST', label: 'NIST', color: 'orange' },
-    { value: 'SBS', label: 'SBS Perú', color: 'teal' }
+    { value: 'SBS', label: 'SBS Perú', color: 'cyan' }
   ];
 
   return (

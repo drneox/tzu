@@ -57,30 +57,32 @@ import {
 import { getDashboardStats } from '../services/apiClient';
 import { getProjects } from '../services/projectService';
 import { useLocalization } from '../hooks/useLocalization';
+import { colors } from '../theme/colors';
+import { getRiskLevelColor } from '../utils/riskCalculations';
 
 // ── Colour palette ────────────────────────────────────────────────────────────
 const RISK_COLORS = {
-  CRITICAL: '#E53E3E',
-  HIGH: '#DD6B20',
-  MEDIUM: '#D69E2E',
-  LOW: '#38A169',
-  UNKNOWN: '#718096',
+  CRITICAL: getRiskLevelColor('CRITICAL'),
+  HIGH: getRiskLevelColor('HIGH'),
+  MEDIUM: getRiskLevelColor('MEDIUM'),
+  LOW: getRiskLevelColor('LOW'),
+  UNKNOWN: getRiskLevelColor('UNKNOWN'),
 };
 
 const STANDARD_COLORS = {
-  ASVS:     '#3182CE', // blue
-  MASVS:    '#805AD5', // purple
-  ISO27001: '#38A169', // green
-  NIST:     '#DD6B20', // orange
-  SBS:      '#319795', // teal
+  ASVS:     colors.chart.asvs,
+  MASVS:    colors.chart.masvs,
+  ISO27001: colors.chart.iso27001,
+  NIST:     colors.chart.nist,
+  SBS:      colors.chart.sbs,
 };
 
 const STANDARD_COLORS_LIGHT = {
-  ASVS:     '#BEE3F8', // blue light
-  MASVS:    '#D6BCFA', // purple light
-  ISO27001: '#C6F6D5', // green light
-  NIST:     '#FEEBC8', // orange light
-  SBS:      '#B2F5EA', // teal light
+  ASVS:     colors.chartLight.asvs,
+  MASVS:    colors.chartLight.masvs,
+  ISO27001: colors.chartLight.iso27001,
+  NIST:     colors.chartLight.nist,
+  SBS:      colors.chartLight.sbs,
 };
 
 // ── Helper: small KPI card ────────────────────────────────────────────────────
@@ -211,7 +213,7 @@ const Dashboard = () => {
           <Text color="gray.500" mb={5}>
             {tb?.empty_body || 'Start by creating your first information system.'}
           </Text>
-          <Button as={RouterLink} to="/create" colorScheme="orange" size="md">
+          <Button as={RouterLink} to="/create" colorScheme="indigo" size="md">
             {tb?.empty_cta || 'Create Information System'}
           </Button>
         </Box>
@@ -293,7 +295,7 @@ const Dashboard = () => {
                           {pieData.map((entry) => (
                             <Cell
                               key={entry.name}
-                              fill={RISK_COLORS[entry.name] || '#718096'}
+                              fill={RISK_COLORS[entry.name] || colors.risk.unknown}
                             />
                           ))}
                         </Pie>
@@ -350,7 +352,7 @@ const Dashboard = () => {
                               <Td>
                                 <RouterLink
                                   to={`/analysis/${sys.id}`}
-                                  style={{ color: '#3182ce', textDecoration: 'underline' }}
+                                  style={{ color: colors.primary.default, textDecoration: 'underline' }}
                                 >
                                   {sys.title}
                                 </RouterLink>
@@ -495,7 +497,7 @@ const Dashboard = () => {
                           {barData.map((entry) => (
                             <Cell
                               key={`cov-${entry.name}`}
-                              fill={STANDARD_COLORS[entry.name] || '#718096'}
+                              fill={STANDARD_COLORS[entry.name] || colors.risk.unknown}
                             />
                           ))}
                         </Bar>
@@ -503,7 +505,7 @@ const Dashboard = () => {
                           {barData.map((entry) => (
                             <Cell
                               key={`rem-${entry.name}`}
-                              fill={STANDARD_COLORS_LIGHT[entry.name] || '#CBD5E0'}
+                              fill={STANDARD_COLORS_LIGHT[entry.name] || colors.borderStrong}
                             />
                           ))}
                         </Bar>

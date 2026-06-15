@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { colors } from '../theme/colors';
 import {getInformationSystems} from "../services";
 import { archiveInformationSystem } from "../services/informationSystemService";
 import { getProjects } from "../services/projectService";
@@ -132,7 +133,7 @@ const Index = () => {
   if (isLoading && serviceData.length === 0) {
     return (
       <Flex align="center" justify="center" height="50vh">
-        <Spinner size="xl" color="blue.500" thickness="4px" />
+        <Spinner size="xl" color="indigo.500" thickness="4px" />
         <Text ml={4} fontSize="xl">{t?.ui?.loading || 'Cargando...'}</Text>
       </Flex>
     );
@@ -174,7 +175,7 @@ const Index = () => {
                 id="show-archived"
                 isChecked={showArchived}
                 onChange={(e) => { setShowArchived(e.target.checked); setCurrentPage(1); }}
-                colorScheme="teal"
+                colorScheme="indigo"
                 size="sm"
               />
             </Flex>
@@ -184,7 +185,7 @@ const Index = () => {
         <TableContainer>
           <Table border="2px solid gray" borderCollapse="collapse" variant='striped' colorScheme='gray' overflowX='auto' whiteSpace='normal' width="100%">
             <Thead>
-              <Tr bg="blue.500" color="white" p="4">
+              <Tr bg="indigo.500" color="white" p="4">
                 <Th color="white" p="3" shadow="md">{t?.ui?.table?.title || 'Título'}</Th>
                 <Th color="white" p="3" shadow="md">{t?.ui?.table?.description || 'Descripción'}</Th>
                 <Th color="white" p="3" shadow="md">{t?.projects?.project || 'Proyecto'}</Th>
@@ -206,7 +207,7 @@ const Index = () => {
                     <Tr key={data.id} opacity={data.archived ? 0.6 : 1}>
                       <Td>
                         <Flex align="center" gap={2} wrap="wrap">
-                          <Link to={`/analysis/${data.id}`} style={{ color: 'blue.600', fontWeight: 'medium' }}>{String(data.title)}</Link>
+                          <Link to={`/analysis/${data.id}`} style={{ color: colors.primary.default, fontWeight: 'medium' }}>{String(data.title)}</Link>
                           {data.archived && (
                             <Badge colorScheme="gray" borderRadius="md" px={2}>
                               {t?.index?.archived_badge || 'Archivado'}
@@ -217,7 +218,7 @@ const Index = () => {
                       <Td>{data.description}</Td>
                       <Td>
                         {data.project_name
-                          ? <Badge colorScheme="blue" borderRadius="md" px={2}>{data.project_name}</Badge>
+                          ? <Badge colorScheme="indigo" borderRadius="md" px={2}>{data.project_name}</Badge>
                           : <Text color="gray.400" fontSize="sm">{t?.projects?.noProject || '—'}</Text>
                         }
                       </Td>
@@ -230,7 +231,7 @@ const Index = () => {
                               icon={data.archived ? <MdUnarchive size="16" /> : <MdArchive size="16" />}
                               size="xs"
                               variant="ghost"
-                              colorScheme={data.archived ? 'teal' : 'gray'}
+                              colorScheme={data.archived ? 'indigo' : 'gray'}
                               isLoading={archivingId === data.id}
                               onClick={() => handleToggleArchive(data.id, data.archived)}
                             />
@@ -244,7 +245,7 @@ const Index = () => {
               {isLoading && (
                 <Tr>
                   <Td colSpan={isAdmin ? 5 : 4} textAlign="center" py={4}>
-                    <Spinner size="sm" color="blue.500" mr={2} />
+                    <Spinner size="sm" color="indigo.500" mr={2} />
                     {t?.ui?.loading_more || 'Cargando más resultados...'}
                   </Td>
                 </Tr>

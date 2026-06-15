@@ -61,7 +61,7 @@ const ControlTagsWithAutocomplete = ({ threatId, strideCategory, initialTags = [
       case 'MASVS': return 'green';
       case 'NIST': return 'purple';
       case 'ISO27001': return 'orange';
-      case 'SBS': return 'teal';
+      case 'SBS': return 'cyan';
       default: return 'gray';
     }
   };

@@ -252,7 +252,7 @@ const Reports = () => {
                 onClick={() => setShowFilters(!showFilters)}
                 variant="outline"
                 size="sm"
-                colorScheme="blue"
+                colorScheme="indigo"
                 position="relative"
               >
                 {showFilters ? t.ui.reports.hide_filters : t.ui.reports.show_filters}
@@ -274,7 +274,7 @@ const Reports = () => {
               <Text fontSize="sm" color="gray.600">
                 {t.ui.reports.showing_page} {currentPage} - {currentThreats.length} {t.ui.reports.threats}
                 {(selectedStandards.length > 0 || selectedInherentRisk || selectedCurrentRisk) && (
-                  <Text as="span" ml={2} color="blue.600">
+                  <Text as="span" ml={2} color="indigo.600">
                     ({t.ui.reports.filtered_by}: {[
                       ...(selectedStandards.length > 0 ? [`${t.ui.reports.standards}: ${selectedStandards.join(', ')}`] : []),
                       ...(selectedInherentRisk ? [`${t.ui.reports.inherent_risk}: ${selectedInherentRisk}`] : []),
@@ -342,7 +342,7 @@ const Reports = () => {
                         <Td>
                           {threat.information_system?.title && threat.information_system?.id ? (
                             <Link to={`/analysis/${threat.information_system.id}`}>
-                              <Text fontWeight="medium" fontSize="sm" color="blue.600" _hover={{ textDecoration: 'underline' }}>
+                              <Text fontWeight="medium" fontSize="sm" color="indigo.600" _hover={{ textDecoration: 'underline' }}>
                                 {threat.information_system.title}
                               </Text>
                             </Link>
@@ -358,7 +358,7 @@ const Reports = () => {
                           </Text>
                         </Td>
                         <Td>
-                          <Badge colorScheme="blue" size="sm">
+                          <Badge colorScheme="indigo" size="sm">
                             {threat.type}
                           </Badge>
                         </Td>

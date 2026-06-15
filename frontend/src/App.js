@@ -13,6 +13,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ChakraProvider } from '@chakra-ui/react';
+import theme from './theme';
 import './App.css';
 
 // Context de autenticación
@@ -181,7 +182,7 @@ function AppContent() {
  */
 function App() {
   return (
-    <ChakraProvider>
+    <ChakraProvider theme={theme}>
       <AuthProvider>
         <ControlTagsCatalogProvider>
           <Router>

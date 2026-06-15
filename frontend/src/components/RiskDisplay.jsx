@@ -1,7 +1,8 @@
 import React from 'react';
-import { Badge, VStack, Text, Box } from '@chakra-ui/react';
+import { Badge, VStack, Text } from '@chakra-ui/react';
 import { getRiskColorScheme, getRiskColorCSS, getRiskLabel } from '../utils/riskCalculations';
 import { useLocalization } from '../hooks/useLocalization';
+import { colors } from '../theme/colors';
 
 /**
  * Component to display risk values consistently across the application
@@ -29,7 +30,7 @@ const RiskDisplay = ({
         padding: '8px',
         borderRadius: '8px',
         minWidth: '80px',
-        backgroundColor: '#f7fafc'
+        backgroundColor: colors.riskDisplay.bg
       },
       numberValue: {
         fontSize: size === 'sm' ? '18px' : '24px',

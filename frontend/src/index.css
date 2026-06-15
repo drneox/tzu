@@ -29,7 +29,7 @@ input, select, textarea {
   font-size: inherit;
 }
 
-/* Estilos de utilidad */
+/* Estilos de utilidad — mantener sincronizados con src/theme/colors.js */
 .text-center {
   text-align: center;
 }
@@ -55,35 +55,35 @@ input, select, textarea {
 }
 
 .bg-gray-50 {
-  background-color: #f9fafb;
+  background-color: #f8fafc; /* slate.50 */
 }
 
 .bg-gray-100 {
-  background-color: #f3f4f6;
+  background-color: #f1f5f9; /* slate.100 */
 }
 
 .bg-gray-200 {
-  background-color: #e5e7eb;
+  background-color: #e2e8f0; /* slate.200 */
 }
 
 .text-gray-600 {
-  color: #4b5563;
+  color: #475569; /* slate.600 */
 }
 
 .text-gray-700 {
-  color: #374151;
+  color: #334155; /* slate.700 */
 }
 
 .text-gray-800 {
-  color: #1f2937;
+  color: #1e293b; /* slate.800 */
 }
 
 .border {
-  border: 1px solid #d1d5db;
+  border: 1px solid #cbd5e1; /* slate.300 */
 }
 
 .border-gray-300 {
-  border-color: #d1d5db;
+  border-color: #cbd5e1; /* slate.300 */
 }
 
 .rounded {
@@ -100,17 +100,17 @@ input, select, textarea {
     padding: 10px;
     overflow-x: auto;
   }
-  
+
   .analysis-table {
     min-width: 800px;
   }
-  
+
   .analysis-table th,
   .analysis-table td {
     padding: 6px 4px;
     font-size: 12px;
   }
-  
+
   .risk-input {
     width: 35px;
   }

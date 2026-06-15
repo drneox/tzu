@@ -1,3 +1,28 @@
+/*
+ * Estilos de utilidad para TZU standalone.
+ * Los colores deben mantenerse sincronizados con src/theme/colors.js
+ * y src/theme/index.js. Si cambias un token en JS, actualiza también
+ * la variable CSS correspondiente aquí.
+ */
+
+:root {
+  --tzu-bg: #f8fafc;
+  --tzu-surface: #ffffff;
+  --tzu-text-primary: #1e293b;
+  --tzu-text-secondary: #475569;
+  --tzu-text-muted: #94a3b8;
+  --tzu-border: #e2e8f0;
+  --tzu-border-strong: #cbd5e1;
+  --tzu-primary: #4f46e5;
+  --tzu-primary-hover: #4338ca;
+  --tzu-focus: #6366f1;
+  --tzu-success: #10b981;
+  --tzu-success-hover: #059669;
+  --tzu-error: #e11d48;
+  --tzu-error-hover: #be123c;
+  --tzu-warning: #f59e0b;
+}
+
 .App {
   text-align: center;
 }
@@ -14,18 +39,18 @@
 }
 
 .App-header {
-  background-color: #282c34;
+  background-color: var(--tzu-bg);
   min-height: 100vh;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   font-size: calc(10px + 2vmin);
-  color: white;
+  color: var(--tzu-text-primary);
 }
 
 .App-link {
-  color: #61dafb;
+  color: var(--tzu-primary);
 }
 
 @keyframes App-logo-spin {
@@ -50,51 +75,53 @@
 }
 
 .analysis-table th {
-  background-color: #f7fafc;
-  font-weight: bold;
+  background-color: var(--tzu-bg);
+  font-weight: 600;
   text-align: center;
   padding: 12px 8px;
-  border-bottom: 2px solid #e2e8f0;
+  border-bottom: 2px solid var(--tzu-border);
+  color: var(--tzu-text-primary);
 }
 
 .analysis-table td {
   padding: 8px;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--tzu-border);
   vertical-align: top;
+  color: var(--tzu-text-secondary);
 }
 
 .risk-input {
   width: 40px;
   padding: 4px;
   text-align: center;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--tzu-border-strong);
   border-radius: 4px;
 }
 
 .risk-input:focus {
   outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 1px #3b82f6;
+  border-color: var(--tzu-focus);
+  box-shadow: 0 0 0 1px var(--tzu-focus);
 }
 
 .risk-high {
-  color: #dc2626;
+  color: var(--tzu-error);
   font-weight: bold;
 }
 
 .risk-medium {
-  color: #f59e0b;
+  color: var(--tzu-warning);
   font-weight: bold;
 }
 
 .risk-low {
-  color: #059669;
+  color: var(--tzu-success);
   font-weight: bold;
 }
 
 .btn-primary {
-  background-color: #3b82f6;
-  color: white;
+  background-color: var(--tzu-primary);
+  color: var(--tzu-surface);
   padding: 10px 20px;
   border: none;
   border-radius: 6px;
@@ -105,12 +132,12 @@
 }
 
 .btn-primary:hover {
-  background-color: #2563eb;
+  background-color: var(--tzu-primary-hover);
 }
 
 .btn-success {
-  background-color: #059669;
-  color: white;
+  background-color: var(--tzu-success);
+  color: var(--tzu-surface);
   padding: 10px 20px;
   border: none;
   border-radius: 6px;
@@ -121,12 +148,12 @@
 }
 
 .btn-success:hover {
-  background-color: #047857;
+  background-color: var(--tzu-success-hover);
 }
 
 .btn-danger {
-  background-color: #dc2626;
-  color: white;
+  background-color: var(--tzu-error);
+  color: var(--tzu-surface);
   padding: 8px 12px;
   border: none;
   border-radius: 4px;
@@ -136,7 +163,7 @@
 }
 
 .btn-danger:hover {
-  background-color: #b91c1c;
+  background-color: var(--tzu-error-hover);
 }
 
 .textarea-auto {
@@ -146,13 +173,14 @@
   font-family: inherit;
   font-size: 14px;
   padding: 8px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--tzu-border-strong);
   border-radius: 4px;
   width: 100%;
+  background-color: var(--tzu-bg);
 }
 
 .textarea-auto:focus {
   outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 1px #3b82f6;
+  border-color: var(--tzu-focus);
+  box-shadow: 0 0 0 1px var(--tzu-focus);
 }
