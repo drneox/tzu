@@ -69,7 +69,7 @@ const ThreatCard = ({
         <HStack spacing={2}>
           <Button
             size="sm"
-            colorScheme="blue"
+            colorScheme="indigo"
             variant="ghost"
             leftIcon={isCollapsed ? <FaEye /> : <FaEyeSlash />}
             onClick={() => onToggleCollapse(threat.id)}
@@ -191,7 +191,7 @@ const ThreatCard = ({
             </Text>
             
             {/* Likelihood Factors */}
-            <Text fontSize="xs" fontWeight="semibold" color="blue.600" mb={2}>
+            <Text fontSize="xs" fontWeight="semibold" color="indigo.600" mb={2}>
               {t?.ui?.likelihood || 'Likelihood'} - {t?.ui?.threat_agent_factors || 'Threat Agent Factors'}:
             </Text>
             <HStack spacing={2} wrap="wrap" mb={3}>
@@ -201,7 +201,7 @@ const ThreatCard = ({
               <OwaspSelector threatId={threat.id} factorName="size" currentValue={threat.size} onChange={onOwaspChange} />
             </HStack>
 
-            <Text fontSize="xs" fontWeight="semibold" color="blue.600" mb={2}>
+            <Text fontSize="xs" fontWeight="semibold" color="indigo.600" mb={2}>
               {t?.ui?.likelihood || 'Likelihood'} - {t?.ui?.vulnerability_factors || 'Vulnerability Factors'}:
             </Text>
             <HStack spacing={2} wrap="wrap" mb={4}>

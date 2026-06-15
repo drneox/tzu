@@ -1,3 +1,5 @@
+import { colors } from '../theme/colors';
+
 /**
  * Utilities for OWASP Risk Rating calculations
  */
@@ -65,7 +67,7 @@ export const getRiskLabel = (riskValue, t) => {
 export const getRiskColorScheme = (riskValue) => {
   const value = parseFloat(riskValue);
   if (value >= 6) return 'red';
-  if (value >= 3) return 'yellow';
+  if (value >= 3) return 'amber';
   return 'green';
 };
 
@@ -76,9 +78,25 @@ export const getRiskColorScheme = (riskValue) => {
  */
 export const getRiskColorCSS = (riskValue) => {
   const numericRisk = typeof riskValue === 'string' ? parseFloat(riskValue) : riskValue;
-  if (numericRisk >= 6) return '#e53e3e'; // red.500
-  if (numericRisk >= 3) return '#dd6b20'; // orange.500
-  return '#38a169'; // green.500
+  if (numericRisk >= 6) return colors.risk.critical;
+  if (numericRisk >= 3) return colors.risk.high;
+  return colors.risk.low;
+};
+
+/**
+ * Get risk color for chart/distribution use (distinct colors for each level)
+ * @param {string} level - Risk level name (CRITICAL, HIGH, MEDIUM, LOW, UNKNOWN)
+ * @returns {string} - CSS color value
+ */
+export const getRiskLevelColor = (level) => {
+  const levelColors = {
+    CRITICAL: '#e11d48',
+    HIGH: '#f97316',
+    MEDIUM: '#eab308',
+    LOW: '#10b981',
+    UNKNOWN: '#64748b',
+  };
+  return levelColors[level?.toUpperCase()] || levelColors.UNKNOWN;
 };
 
 /**

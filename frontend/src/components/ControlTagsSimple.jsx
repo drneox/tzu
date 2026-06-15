@@ -1,5 +1,6 @@
-import Reacimport React from 'react';
+import React from 'react';
 import { VStack, HStack, Text, Input, Box, Tag, TagLabel, TagCloseButton } from "@chakra-ui/react";
+import { colors } from '../theme/colors';
 
 // Componente BÁSICO para Control Tags - SIN AUTOCOMPLETAR PRIMERO
 const ControlTagsSimple = ({ threatId, strideCategory, initialTags = [], onTagsChange }) => {
@@ -48,7 +49,7 @@ const ControlTagsSimple = ({ threatId, strideCategory, initialTags = [], onTagsC
       {tags.length > 0 && (
         <HStack wrap="wrap" spacing={1}>
           {tags.map((tag, index) => (
-            <Tag key={index} size="sm" colorScheme="blue">
+            <Tag key={index} size="sm" colorScheme="indigo">
               <TagLabel>{tag}</TagLabel>
               <TagCloseButton onClick={() => removeTag(tag)} />
             </Tag>
@@ -167,7 +168,7 @@ const ControlTagsSimple = ({ threatId, strideCategory, initialTags = [], onTagsC
       {tags.length > 0 && (
         <HStack wrap="wrap" spacing={1}>
           {tags.map((tag, index) => (
-            <Tag key={index} size="sm" colorScheme="blue">
+            <Tag key={index} size="sm" colorScheme="indigo">
               <TagLabel>{tag}</TagLabel>
               <TagCloseButton onClick={() => removeTag(tag)} />
             </Tag>
@@ -201,7 +202,7 @@ const ControlTagsSimple = ({ threatId, strideCategory, initialTags = [], onTagsC
             left={0}
             right={0}
             bg="white"
-            border="1px solid #ccc"
+            border={`1px solid ${colors.controlTag.inputBorder}`}
             borderRadius="md"
             maxH="150px"
             overflowY="auto"
@@ -213,10 +214,10 @@ const ControlTagsSimple = ({ threatId, strideCategory, initialTags = [], onTagsC
                 key={index}
                 p={2}
                 cursor="pointer"
-                _hover={{ bg: "blue.50" }}
+                _hover={{ bg: colors.primary.light }}
                 onClick={() => addTag(tag)}
                 fontSize="sm"
-                borderBottom={index < filteredSuggestions.length - 1 ? "1px solid #eee" : "none"}
+                borderBottom={index < filteredSuggestions.length - 1 ? `1px solid ${colors.borderSubtle}` : "none"}
               >
                 {tag}
               </Box>

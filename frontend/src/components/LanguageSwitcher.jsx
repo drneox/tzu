@@ -17,14 +17,14 @@ const LanguageSwitcher = () => {
     <ButtonGroup isAttached variant="outline" size="sm">
       <Button
         onClick={() => handleLanguageChange('es')}
-        colorScheme={locale === 'es' ? 'blue' : 'gray'}
+        colorScheme={locale === 'es' ? 'indigo' : 'gray'}
         variant={locale === 'es' ? 'solid' : 'outline'}
       >
         ES
       </Button>
       <Button
         onClick={() => handleLanguageChange('en')}
-        colorScheme={locale === 'en' ? 'blue' : 'gray'}
+        colorScheme={locale === 'en' ? 'indigo' : 'gray'}
         variant={locale === 'en' ? 'solid' : 'outline'}
       >
         EN

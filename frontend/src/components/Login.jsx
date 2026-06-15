@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import {
   Box,
   VStack,
-  Image,
   Heading,
   Text,
   Input,
@@ -25,6 +24,8 @@ import { FaUser, FaLock, FaEye, FaEyeSlash } from 'react-icons/fa';
 import { loginUser, getCurrentUser } from '../services';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { colors } from '../theme/colors';
+import Logo from './Logo';
 
 const Login = ({ onLogin }) => {
   const [loginData, setLoginData] = useState({ username: '', password: '' });
@@ -35,9 +36,9 @@ const Login = ({ onLogin }) => {
   const navigate = useNavigate();
   const { login: authLogin } = useAuth();
 
-  const bgColor = useColorModeValue('gray.50', 'gray.900');
-  const cardBg = useColorModeValue('white', 'gray.800');
-  const borderColor = useColorModeValue('gray.200', 'gray.600');
+  const bgColor = useColorModeValue('slate.50', 'slate.900');
+  const cardBg = useColorModeValue('white', 'slate.800');
+  const borderColor = useColorModeValue('slate.200', 'slate.600');
 
   const handleLoginChange = (e) => {
     const { name, value } = e.target;
@@ -104,48 +105,29 @@ const Login = ({ onLogin }) => {
       minH="100vh"
       align="center"
       justify="center"
-      bgGradient="linear(to-b, blue.800, blue.900)" // Gradiente azul oscuro profesional para ciberseguridad
+      bg={bgColor}
       position="relative"
       px={4}
-      _before={{
-        content: '""',
-        position: "absolute",
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        bgImage: "radial-gradient(circle at 25px 25px, rgba(255, 255, 255, 0.05) 2%, transparent 0%), linear-gradient(135deg, rgba(66, 153, 225, 0.1) 0%, rgba(0, 0, 0, 0) 50%)",
-        backgroundSize: "30px 30px, cover",
-        opacity: 0.6, // Efecto sutil de textura digital
-      }}
     >
       <Card
-        maxW="500px"
+        maxW="420px"
         w="full"
         bg={cardBg}
-        borderColor="rgba(66, 153, 225, 0.3)" // Borde sutil con color azul
+        borderColor={borderColor}
         borderWidth="1px"
         borderRadius="xl"
-        shadow="2xl"
+        shadow="lg"
         overflow="hidden"
-        _hover={{ boxShadow: "0 0 20px rgba(66, 153, 225, 0.2)" }} // Sutil resplandor al pasar el cursor
-        transition="box-shadow 0.3s ease"
       >
         <CardBody p={8}>
           <VStack spacing={6} align="center">
             {/* Logo y título */}
             <VStack spacing={4}>
-              <Image
-                src="/tzu.png"
-                alt="Tzu Logo"
-                boxSize="100px"
-                objectFit="contain"
-                filter="drop-shadow(0px 4px 6px rgba(0, 0, 0, 0.2))"
-              />
+              <Logo size="56px" p="8px" />
               <VStack spacing={1}>
                 <Heading
                   size="lg"
-                  color="blue.600"
+                  color="slate.800"
                   textAlign="center"
                   fontWeight="bold"
                   letterSpacing="tight"
@@ -154,7 +136,7 @@ const Login = ({ onLogin }) => {
                 </Heading>
                 <Text
                   fontSize="sm"
-                  color="gray.600"
+                  color="slate.500"
                   textAlign="center"
                   fontWeight="medium"
                   letterSpacing="wider"
@@ -176,12 +158,12 @@ const Login = ({ onLogin }) => {
                   )}
 
                   <FormControl isRequired>
-                    <FormLabel fontSize="sm" color="gray.600">
+                    <FormLabel fontSize="sm" color="slate.600">
                       Usuario
                     </FormLabel>
                     <InputGroup>
                       <InputLeftElement pointerEvents="none">
-                        <FaUser color="gray" />
+                        <FaUser color={colors.text.muted} />
                       </InputLeftElement>
                       <Input
                         type="text"
@@ -190,20 +172,20 @@ const Login = ({ onLogin }) => {
                         onChange={handleLoginChange}
                         placeholder="Ingresa tu usuario"
                         borderColor={borderColor}
-                        _hover={{ borderColor: 'blue.400' }}
-                        _focus={{ borderColor: 'blue.500', boxShadow: '0 0 0 1px blue.500' }}
-                        bg="gray.50"
+                        _hover={{ borderColor: 'slate.300' }}
+                        _focus={{ borderColor: 'indigo.500', boxShadow: `0 0 0 1px ${colors.primary.default}` }}
+                        bg="slate.50"
                       />
                     </InputGroup>
                   </FormControl>
 
                   <FormControl isRequired>
-                    <FormLabel fontSize="sm" color="gray.600">
+                    <FormLabel fontSize="sm" color="slate.600">
                       Contraseña
                     </FormLabel>
                     <InputGroup>
                       <InputLeftElement pointerEvents="none">
-                        <FaLock color="gray" />
+                        <FaLock color={colors.text.muted} />
                       </InputLeftElement>
                       <Input
                         type={showPassword ? 'text' : 'password'}
@@ -212,9 +194,9 @@ const Login = ({ onLogin }) => {
                         onChange={handleLoginChange}
                         placeholder="Ingresa tu contraseña"
                         borderColor={borderColor}
-                        _hover={{ borderColor: 'blue.400' }}
-                        _focus={{ borderColor: 'blue.500', boxShadow: '0 0 0 1px blue.500' }}
-                        bg="gray.50"
+                        _hover={{ borderColor: 'slate.300' }}
+                        _focus={{ borderColor: 'indigo.500', boxShadow: `0 0 0 1px ${colors.primary.default}` }}
+                        bg="slate.50"
                       />
                       <InputRightElement>
                         <IconButton
@@ -223,6 +205,7 @@ const Login = ({ onLogin }) => {
                           onClick={() => setShowPassword(!showPassword)}
                           icon={showPassword ? <FaEyeSlash /> : <FaEye />}
                           aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                          color="slate.500"
                         />
                       </InputRightElement>
                     </InputGroup>
@@ -230,20 +213,21 @@ const Login = ({ onLogin }) => {
 
                   <Button
                     type="submit"
-                    bgGradient="linear(to-r, blue.500, blue.700)"
-                    _hover={{ 
-                      bgGradient: "linear(to-r, blue.600, blue.800)",
-                      transform: "translateY(-2px)",
-                      boxShadow: "lg"
+                    bgGradient="linear(to-r, indigo.500, indigo.700)"
+                    _hover={{
+                      bgGradient: "linear(to-r, indigo.600, indigo.800)",
+                      transform: "translateY(-1px)",
+                      boxShadow: "md"
                     }}
+                    _active={{ bgGradient: "linear(to-r, indigo.700, indigo.900)" }}
                     size="lg"
                     w="full"
                     mt={4}
                     isLoading={isLoading}
                     loadingText="Iniciando sesión..."
-                    boxShadow="md"
+                    boxShadow="sm"
                     color="white"
-                    transition="all 0.3s"
+                    transition="all 0.2s"
                     fontWeight="medium"
                     letterSpacing="wide"
                   >

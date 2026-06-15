@@ -48,7 +48,7 @@ const ControlTagsBasic = ({ threatId, strideCategory, initialTags = [], onTagsCh
       {tags.length > 0 && (
         <HStack wrap="wrap" spacing={1}>
           {tags.map((tag, index) => (
-            <Tag key={index} size="sm" colorScheme="blue">
+            <Tag key={index} size="sm" colorScheme="indigo">
               <TagLabel>{tag}</TagLabel>
               <TagCloseButton onClick={() => removeTag(tag)} />
             </Tag>

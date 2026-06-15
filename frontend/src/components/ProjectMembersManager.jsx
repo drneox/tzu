@@ -142,7 +142,7 @@ const ProjectMembersManager = ({ project, canManage }) => {
             size="xs"
             maxWidth="280px"
           />
-          <Button type="submit" size="xs" colorScheme="teal" isLoading={isAdding}>
+          <Button type="submit" size="xs" colorScheme="indigo" isLoading={isAdding}>
             {t?.projects?.addMember || 'Agregar'}
           </Button>
         </HStack>

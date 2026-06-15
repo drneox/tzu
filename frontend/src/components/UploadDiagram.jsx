@@ -65,7 +65,7 @@ const UploadDiagram = () => {
 
   const bgColor = useColorModeValue("white", "gray.800");
   const borderColor = useColorModeValue("gray.200", "gray.600");
-  const tabActiveBg = useColorModeValue("teal.50", "teal.900");
+  const tabActiveBg = useColorModeValue("indigo.50", "indigo.900");
   const tabInactiveBg = useColorModeValue("gray.50", "gray.700");
 
   const simulateProgress = () => {
@@ -164,7 +164,7 @@ const UploadDiagram = () => {
         animation={`${fadeIn} 0.5s ease-out`}
       >
         <VStack spacing={6}>
-          <Heading size="lg" textAlign="center" color="teal.600">
+          <Heading size="lg" textAlign="center" color="indigo.600">
             <Icon as={FiUpload} mr={2} />
             Subir Diagrama de Amenazas
           </Heading>
@@ -177,11 +177,11 @@ const UploadDiagram = () => {
                 borderRadius={0}
                 leftIcon={<FiImage />}
                 bg={mode === "file" ? tabActiveBg : tabInactiveBg}
-                color={mode === "file" ? "teal.700" : "gray.500"}
+                color={mode === "file" ? "indigo.700" : "gray.500"}
                 fontWeight={mode === "file" ? "bold" : "normal"}
                 borderRight="1px solid"
                 borderColor="gray.200"
-                _hover={{ bg: tabActiveBg, color: "teal.700" }}
+                _hover={{ bg: tabActiveBg, color: "indigo.700" }}
                 onClick={() => { setMode("file"); resetUpload(); }}
                 size="sm"
                 py={5}
@@ -193,9 +193,9 @@ const UploadDiagram = () => {
                 borderRadius={0}
                 leftIcon={<FiFileText />}
                 bg={mode === "text" ? tabActiveBg : tabInactiveBg}
-                color={mode === "text" ? "teal.700" : "gray.500"}
+                color={mode === "text" ? "indigo.700" : "gray.500"}
                 fontWeight={mode === "text" ? "bold" : "normal"}
-                _hover={{ bg: tabActiveBg, color: "teal.700" }}
+                _hover={{ bg: tabActiveBg, color: "indigo.700" }}
                 onClick={() => { setMode("text"); resetUpload(); }}
                 size="sm"
                 py={5}
@@ -210,13 +210,13 @@ const UploadDiagram = () => {
             <Box
               p={6}
               border="2px dashed"
-              borderColor={file ? "teal.300" : "gray.300"}
+              borderColor={file ? "indigo.300" : "gray.300"}
               borderRadius={12}
               width="100%"
               textAlign="center"
               transition="all 0.3s"
-              _hover={{ borderColor: "teal.400", transform: "scale(1.02)" }}
-              bg={file ? "teal.50" : "gray.50"}
+              _hover={{ borderColor: "indigo.400", transform: "scale(1.02)" }}
+              bg={file ? "indigo.50" : "gray.50"}
             >
               <Input
                 ref={fileInputRef}
@@ -230,11 +230,11 @@ const UploadDiagram = () => {
                 <Icon
                   as={FiUpload}
                   fontSize="3em"
-                  color={file ? "teal.500" : "gray.400"}
+                  color={file ? "indigo.500" : "gray.400"}
                   mb={3}
                   animation={file ? `${bounce} 1s infinite` : undefined}
                 />
-                <Text fontSize="lg" color={file ? "teal.600" : "gray.500"} mb={2}>
+                <Text fontSize="lg" color={file ? "indigo.600" : "gray.500"} mb={2}>
                   {file ? file.name : "Haz clic aquí o arrastra tu archivo"}
                 </Text>
                 <Text fontSize="sm" color="gray.400">
@@ -261,11 +261,11 @@ const UploadDiagram = () => {
                 value={textContent}
                 onChange={(e) => setTextContent(e.target.value)}
                 minH="200px"
-                borderColor={textContent.trim() ? "teal.300" : "gray.300"}
-                focusBorderColor="teal.400"
+                borderColor={textContent.trim() ? "indigo.300" : "gray.300"}
+                focusBorderColor="indigo.400"
                 resize="vertical"
                 fontSize="sm"
-                bg={textContent.trim() ? "teal.50" : "gray.50"}
+                bg={textContent.trim() ? "indigo.50" : "gray.50"}
               />
               <Text fontSize="xs" color="gray.400" mt={1} textAlign="right">
                 {textContent.length} caracteres
@@ -281,18 +281,18 @@ const UploadDiagram = () => {
                   thickness="4px"
                   speed="0.65s"
                   emptyColor="gray.200"
-                  color="teal.500"
+                  color="indigo.500"
                   size="xl"
                   animation={`${pulse} 2s infinite`}
                 />
-                <Text mt={4} fontSize="lg" color="teal.600" fontWeight="medium">
+                <Text mt={4} fontSize="lg" color="indigo.600" fontWeight="medium">
                   {progressLabel}
                 </Text>
               </Box>
               <Box width="100%">
                 <Progress
                   value={uploadProgress}
-                  colorScheme="teal"
+                  colorScheme="indigo"
                   size="lg"
                   hasStripe
                   isAnimated
@@ -332,7 +332,7 @@ const UploadDiagram = () => {
               <Text fontSize="sm" color="gray.600" textAlign="center">
                 {errorMessage || "No se encontraron amenazas en el contenido analizado"}
               </Text>
-              <Button onClick={resetUpload} colorScheme="orange" variant="outline">
+              <Button onClick={resetUpload} colorScheme="indigo" variant="outline">
                 Intentar de nuevo
               </Button>
             </VStack>
@@ -359,7 +359,7 @@ const UploadDiagram = () => {
             <VStack spacing={3} width="100%">
               <Button
                 onClick={handleSubmit}
-                colorScheme="teal"
+                colorScheme="indigo"
                 size="lg"
                 width="full"
                 leftIcon={<FiUpload />}

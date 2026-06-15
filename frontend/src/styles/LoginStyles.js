@@ -2,7 +2,12 @@
  * Estilos centralizados para el sistema de login
  * Archivo: LoginStyles.js
  * Propósito: Contener todos los estilos del login en un lugar centralizado
+ *
+ * Nota: el login principal usa Login.jsx con Chakra UI. Este archivo se mantiene
+ * para compatibilidad con LoginForm.jsx y cualquier otra referencia legacy.
  */
+
+import { colors } from '../theme/colors';
 
 // Estilos para el contenedor principal del login
 export const loginContainerStyles = {
@@ -10,42 +15,39 @@ export const loginContainerStyles = {
   justifyContent: 'center',
   alignItems: 'center',
   minHeight: '100vh',
-  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+  background: colors.login.bg,
   flexDirection: 'column',
   gap: '30px'
 };
 
 // Estilos para el logo TZU
 export const logoStyles = {
-  width: '180px',
+  width: '120px',
   height: 'auto',
-  filter: 'drop-shadow(0 4px 8px rgba(0, 0, 0, 0.2))',
   backgroundColor: 'transparent',
   borderRadius: '50%',
-  padding: '15px',
-  border: '3px solid rgba(59, 130, 246, 0.8)',
-  backdropFilter: 'blur(5px)'
+  padding: '10px',
+  border: `2px solid ${colors.primary.default}`,
 };
 
 // Estilos para el título principal
 export const mainTitleStyles = {
-  color: 'white',
-  fontSize: '32px',
-  fontFamily: 'Arial, sans-serif',
+  color: colors.login.title,
+  fontSize: '28px',
+  fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
   textAlign: 'center',
   margin: '0',
-  textShadow: '0 2px 4px rgba(0, 0, 0, 0.3)',
   fontWeight: 'bold'
 };
 
 // Estilos para la tarjeta del formulario
 export const formCardStyles = {
-  backgroundColor: 'white',
+  backgroundColor: colors.login.cardBg,
   padding: '40px',
   borderRadius: '12px',
-  boxShadow: '0 8px 16px rgba(0, 0, 0, 0.1)',
+  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)',
   width: '350px',
-  border: '2px solid #e2e8f0'
+  border: `1px solid ${colors.login.inputBorder}`
 };
 
 // Estilos para el contenedor del formulario
@@ -56,7 +58,7 @@ export const formContainerStyles = {
 // Estilos para el subtítulo del formulario
 export const formSubtitleStyles = {
   marginBottom: '25px',
-  color: '#4a5568',
+  color: colors.login.subtitle,
   fontSize: '20px',
   fontWeight: 'bold'
 };
@@ -65,10 +67,11 @@ export const formSubtitleStyles = {
 export const inputBaseStyles = {
   width: '100%',
   padding: '15px',
-  border: '2px solid #e2e8f0',
+  border: `2px solid ${colors.login.inputBorder}`,
   borderRadius: '8px',
   fontSize: '16px',
-  boxSizing: 'border-box'
+  boxSizing: 'border-box',
+  backgroundColor: colors.login.inputBg
 };
 
 // Estilos específicos para el campo de usuario
@@ -87,21 +90,21 @@ export const passwordInputStyles = {
 export const loginButtonStyles = {
   width: '100%',
   padding: '15px',
-  backgroundColor: '#3182ce',
+  backgroundColor: colors.primary.default,
   color: 'white',
   border: 'none',
   borderRadius: '8px',
   fontSize: '18px',
   fontWeight: 'bold',
   cursor: 'pointer',
-  transition: 'background-color 0.3s'
+  transition: 'background-color 0.2s, transform 0.2s'
 };
 
 // Estilos para el texto de ayuda
 export const helpTextStyles = {
   marginTop: '20px',
   fontSize: '14px',
-  color: '#718096',
+  color: colors.text.secondary,
   fontStyle: 'italic'
 };
 
@@ -109,7 +112,7 @@ export const helpTextStyles = {
 export const testButtonStyles = {
   marginTop: '15px',
   padding: '8px 16px',
-  backgroundColor: '#38a169',
+  backgroundColor: colors.text.muted,
   color: 'white',
   border: 'none',
   borderRadius: '6px',
@@ -123,13 +126,21 @@ export const loadingContainerStyles = {
   justifyContent: 'center',
   alignItems: 'center',
   height: '100vh',
-  fontSize: '18px'
+  fontSize: '18px',
+  color: colors.text.secondary,
+  backgroundColor: colors.background
 };
 
 // Efectos hover para botones (funciones)
 export const getHoverEffects = () => ({
   loginButton: {
-    onMouseOver: (e) => e.target.style.backgroundColor = '#2c5aa0',
-    onMouseOut: (e) => e.target.style.backgroundColor = '#3182ce'
+    onMouseOver: (e) => {
+      e.target.style.backgroundColor = colors.primary.hover;
+      e.target.style.transform = 'translateY(-1px)';
+    },
+    onMouseOut: (e) => {
+      e.target.style.backgroundColor = colors.primary.default;
+      e.target.style.transform = 'translateY(0)';
+    }
   }
 });

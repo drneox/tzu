@@ -89,7 +89,7 @@ const CreateInformationSystem = () => {
             />
           </Box>
           {canWrite && (
-            <Button type="submit" colorScheme="teal" width="full">{t.ui.form.create_button}</Button>
+            <Button type="submit" colorScheme="indigo" width="full">{t.ui.form.create_button}</Button>
           )}
         </form>
       </Box>

@@ -45,7 +45,7 @@ const RiskFilter = ({
             <Button
               size="sm"
               variant={selectedInherentRisk === null ? "solid" : "outline"}
-              colorScheme="blue"
+              colorScheme="indigo"
               onClick={() => onInherentRiskChange(null)}
             >
               Todos
@@ -70,7 +70,7 @@ const RiskFilter = ({
             <Button
               size="sm"
               variant={selectedCurrentRisk === null ? "solid" : "outline"}
-              colorScheme="blue"
+              colorScheme="indigo"
               onClick={() => onCurrentRiskChange(null)}
             >
               Todos

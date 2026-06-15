@@ -14,6 +14,7 @@ import ControlTagsWithAutocomplete from './ControlTagsWithAutocomplete';
 import ProjectCombobox from './ProjectCombobox';
 import { calculateInherentRisk, getRiskColorCSS, getRiskLabel } from '../utils/riskCalculations';
 import { handleTextareaResize, calculateTextareaHeight } from '../utils/textareaHelpers';
+import { colors } from '../theme/colors';
 
 // STRIDE Categories constants
 const STRIDE_CATEGORIES = [
@@ -76,7 +77,7 @@ const Analysis = () => {
     
     if (isStrideCategory) {
       return (
-        <Badge colorScheme="blue" size="sm">
+        <Badge colorScheme="indigo" size="sm">
           {typeString}
         </Badge>
       );
@@ -88,7 +89,7 @@ const Analysis = () => {
     return (
       <HStack spacing={1} wrap="wrap">
         {types.map((type, index) => (
-          <Badge key={index} colorScheme="blue" size="sm">
+          <Badge key={index} colorScheme="indigo" size="sm">
             {type}
           </Badge>
         ))}
@@ -257,14 +258,14 @@ const Analysis = () => {
         width: '50px',
         height: '32px',
         cursor: 'pointer',
-        border: '1px solid #E2E8F0',
+        border: `1px solid ${colors.border}`,
         borderRadius: '4px',
         backgroundColor: 'white'
       },
       letterDisplay: {
         fontSize: '14px',
         fontWeight: 'bold',
-        color: '#2D3748',
+        color: colors.text.primary,
         lineHeight: '1'
       },
       invisibleSelect: {
@@ -287,7 +288,7 @@ const Analysis = () => {
         fontSize: '6px',
         pointerEvents: 'none',
         zIndex: 5,
-        color: '#A0AEC0'
+        color: colors.text.muted
       }
     };
     
@@ -550,7 +551,7 @@ const Analysis = () => {
       style={{ marginBottom: "160px" }}
     >
       <Card mb={6} shadow="lg" borderRadius="lg" bg="white">
-        <CardHeader bg="blue.500" color="white" borderTopRadius="lg">
+        <CardHeader bg="indigo.500" color="white" borderTopRadius="lg">
           <Text fontSize="xl" fontWeight="bold">
             {t?.ui?.system_information || 'System Information'}
           </Text>
@@ -558,7 +559,7 @@ const Analysis = () => {
         <CardBody>
           <Grid templateColumns="120px 1fr" gap={4} alignItems="start" mb={6}>
             <GridItem>
-              <Text fontWeight="bold" color="blue.600" fontSize="md">
+              <Text fontWeight="bold" color="indigo.600" fontSize="md">
                 {t?.ui?.title || 'Title'}:
               </Text>
             </GridItem>
@@ -569,7 +570,7 @@ const Analysis = () => {
             </GridItem>
             
             <GridItem>
-              <Text fontWeight="bold" color="blue.600" fontSize="md">
+              <Text fontWeight="bold" color="indigo.600" fontSize="md">
                 {t?.ui?.description || 'Description'}:
               </Text>
             </GridItem>
@@ -580,7 +581,7 @@ const Analysis = () => {
             </GridItem>
 
             <GridItem>
-              <Text fontWeight="bold" color="blue.600" fontSize="md">
+              <Text fontWeight="bold" color="indigo.600" fontSize="md">
                 {t?.projects?.project || 'Project'}:
               </Text>
             </GridItem>
@@ -596,7 +597,7 @@ const Analysis = () => {
                 {canWrite && (
                   <Button
                     size="sm"
-                    colorScheme="teal"
+                    colorScheme="indigo"
                     isLoading={isSavingProject}
                     onClick={async () => {
                       setIsSavingProject(true);
@@ -637,7 +638,7 @@ const Analysis = () => {
           </Grid>
           
           <Box>
-            <Text fontWeight="bold" color="blue.600" fontSize="md" mb={4}>
+            <Text fontWeight="bold" color="indigo.600" fontSize="md" mb={4}>
               {serviceData.diagram_input_type === "text"
                 ? (t?.ui?.architecture_description || 'Descripción de Arquitectura')
                 : (t?.ui?.diagram || 'Diagram')}:
@@ -684,7 +685,7 @@ const Analysis = () => {
         </CardBody>
       </Card>
       
-      <Text fontSize="xl" fontWeight="bold" color="blue.600" mb={4} mt={6}>
+      <Text fontSize="xl" fontWeight="bold" color="indigo.600" mb={4} mt={6}>
         {t?.ui?.threats || 'Threats'}: {threats.length}
       </Text>
       
@@ -696,7 +697,7 @@ const Analysis = () => {
             size="sm"
             leftIcon={<FaThLarge />}
             variant={viewMode === 'compact' ? 'solid' : 'outline'}
-            colorScheme="blue"
+            colorScheme="indigo"
             onClick={() => setViewMode('compact')}
           >
             {t?.ui?.compact || 'Compact'}
@@ -705,7 +706,7 @@ const Analysis = () => {
             size="sm"
             leftIcon={<FaTable />}
             variant={viewMode === 'detailed' ? 'solid' : 'outline'}
-            colorScheme="blue"
+            colorScheme="indigo"
             onClick={() => setViewMode('detailed')}
           >
             {t?.ui?.detailed || 'Detailed'}
@@ -714,7 +715,7 @@ const Analysis = () => {
             size="sm"
             leftIcon={<FaEdit />}
             variant={viewMode === 'tabs' ? 'solid' : 'outline'}
-            colorScheme="blue"
+            colorScheme="indigo"
             onClick={() => setViewMode('tabs')}
           >
             {t?.ui?.tabs || 'Tabs'}
@@ -815,7 +816,7 @@ const Analysis = () => {
                       <VStack>
                         <Button
                           size="sm"
-                          colorScheme="blue"
+                          colorScheme="indigo"
                           variant="outline"
                           leftIcon={<FaEdit />}
                           onClick={() => setViewMode('detailed')}
@@ -867,7 +868,7 @@ const Analysis = () => {
       )}
 
       {viewMode === 'tabs' && (
-        <Tabs variant="enclosed" colorScheme="blue">
+        <Tabs variant="enclosed" colorScheme="indigo">
           <TabList>
             {threats && Array.isArray(threats) && threats.map((threat, index) => (
               <Tab key={threat.id} maxWidth="200px" overflow="hidden" textOverflow="ellipsis">
@@ -1067,28 +1068,28 @@ const Analysis = () => {
         <Table border="2px solid gray" borderCollapse="collapse" overflowX='auto' whiteSpace='normal'>
           <Thead>
             {/* Main title row */}
-            <Tr bg="blue.600" color="white" p="2">
-              <Th rowSpan="3" p="4" shadow="md" borderRight="2px solid white" bg="blue.600" color="white">{t?.ui?.title || 'Title'}</Th>
-              <Th rowSpan="3" p="4" shadow="md" maxWidth='70px' borderRight="2px solid white" bg="blue.600" color="white">{t?.ui?.type || 'Type'}</Th>
-              <Th rowSpan="3" p="4" shadow="md" borderRight="2px solid white" bg="blue.600" color="white">{t?.ui?.description || 'Description'}</Th>
-              <Th rowSpan="3" p="4" shadow="md" maxWidth='200px' borderRight="2px solid white" bg="blue.600" color="white">{t?.ui?.remediation || 'Remediation'}</Th>
+            <Tr bg="indigo.600" color="white" p="2">
+              <Th rowSpan="3" p="4" shadow="md" borderRight="2px solid white" bg="indigo.600" color="white">{t?.ui?.title || 'Title'}</Th>
+              <Th rowSpan="3" p="4" shadow="md" maxWidth='70px' borderRight="2px solid white" bg="indigo.600" color="white">{t?.ui?.type || 'Type'}</Th>
+              <Th rowSpan="3" p="4" shadow="md" borderRight="2px solid white" bg="indigo.600" color="white">{t?.ui?.description || 'Description'}</Th>
+              <Th rowSpan="3" p="4" shadow="md" maxWidth='200px' borderRight="2px solid white" bg="indigo.600" color="white">{t?.ui?.remediation || 'Remediation'}</Th>
               {showRiskAssessment && (
-                <Th colSpan="16" p="2" shadow="md" textAlign="center" borderRight="2px solid white" fontSize="lg" fontWeight="bold" bg="blue.600" color="white">{t?.ui?.owasp_risk_rating || 'OWASP Risk Rating'}</Th>
+                <Th colSpan="16" p="2" shadow="md" textAlign="center" borderRight="2px solid white" fontSize="lg" fontWeight="bold" bg="indigo.600" color="white">{t?.ui?.owasp_risk_rating || 'OWASP Risk Rating'}</Th>
               )}
-              <Th rowSpan="3" p="4" shadow="md" maxWidth='100px' borderRight="2px solid white" bg="blue.600" color="white">{t?.ui?.inherent_risk || 'Inherent Risk'}</Th>
-              <Th rowSpan="3" p="4" shadow="md" maxWidth='100px' borderRight="2px solid white" bg="blue.600" color="white">{t?.ui?.residual_risk || 'Residual Risk'}</Th>
-              <Th rowSpan="3" p="4" shadow="md" maxWidth='100px' borderRight="2px solid white" bg="blue.600" color="white">{t?.ui?.current_risk || 'Current Risk'}</Th>
-              <Th rowSpan="3" p="4" shadow="md" maxWidth='100px' borderRight="2px solid white" bg="blue.600" color="white">{t?.ui?.applied || 'Remediada'}</Th>
-              <Th rowSpan="3" p="4" shadow="md" maxWidth='100px' bg="blue.600" color="white">{t?.ui?.delete || 'Delete'}</Th>
+              <Th rowSpan="3" p="4" shadow="md" maxWidth='100px' borderRight="2px solid white" bg="indigo.600" color="white">{t?.ui?.inherent_risk || 'Inherent Risk'}</Th>
+              <Th rowSpan="3" p="4" shadow="md" maxWidth='100px' borderRight="2px solid white" bg="indigo.600" color="white">{t?.ui?.residual_risk || 'Residual Risk'}</Th>
+              <Th rowSpan="3" p="4" shadow="md" maxWidth='100px' borderRight="2px solid white" bg="indigo.600" color="white">{t?.ui?.current_risk || 'Current Risk'}</Th>
+              <Th rowSpan="3" p="4" shadow="md" maxWidth='100px' borderRight="2px solid white" bg="indigo.600" color="white">{t?.ui?.applied || 'Remediada'}</Th>
+              <Th rowSpan="3" p="4" shadow="md" maxWidth='100px' bg="indigo.600" color="white">{t?.ui?.delete || 'Delete'}</Th>
             </Tr>
             {/* Parent categories row */}
             <Tr bg="blue.400" color="white" p="2">
               {showRiskAssessment && (
                 <>
-                  <Th colSpan="4" p="2" shadow="md" textAlign="center" borderRight="2px solid #4299e1" fontSize="sm" bg="blue.100" color="blue.800">{t.owasp.categories.threat_agent_factors}</Th>
-                  <Th colSpan="4" p="2" shadow="md" textAlign="center" borderRight="2px solid #ed8936" fontSize="sm" bg="orange.100" color="orange.800">{t.owasp.categories.vulnerability_factors}</Th>
-                  <Th colSpan="4" p="2" shadow="md" textAlign="center" borderRight="2px solid #e53e3e" fontSize="sm" bg="red.100" color="red.800">{t.owasp.categories.technical_impact}</Th>
-                  <Th colSpan="4" p="2" shadow="md" textAlign="center" borderRight="2px solid #805ad5" fontSize="sm" bg="purple.100" color="purple.800">{t.owasp.categories.business_impact}</Th>
+                  <Th colSpan="4" p="2" shadow="md" textAlign="center" borderRight="2px solid blue.400" fontSize="sm" bg="blue.100" color="blue.800">{t.owasp.categories.threat_agent_factors}</Th>
+                  <Th colSpan="4" p="2" shadow="md" textAlign="center" borderRight="2px solid orange.400" fontSize="sm" bg="orange.100" color="orange.800">{t.owasp.categories.vulnerability_factors}</Th>
+                  <Th colSpan="4" p="2" shadow="md" textAlign="center" borderRight="2px solid red.500" fontSize="sm" bg="red.100" color="red.800">{t.owasp.categories.technical_impact}</Th>
+                  <Th colSpan="4" p="2" shadow="md" textAlign="center" borderRight="2px solid purple.500" fontSize="sm" bg="purple.100" color="purple.800">{t.owasp.categories.business_impact}</Th>
                 </>
               )}
             </Tr>
@@ -1096,22 +1097,22 @@ const Analysis = () => {
             <Tr bg="gray.300" color="white" p="4" fontSize="xs">
               {showRiskAssessment && (
                 <>
-                  <Th p="2" shadow="md" maxWidth='120px' fontSize="xs" bg="blue.100" color="blue.800" borderRight="1px solid #4299e1">{t.owasp.factors.skill_level}</Th>
-                  <Th p="2" shadow="md" maxWidth='120px' fontSize="xs" bg="blue.100" color="blue.800" borderRight="1px solid #4299e1">{t.owasp.factors.motive}</Th>
-                  <Th p="2" shadow="md" maxWidth='120px' fontSize="xs" bg="blue.100" color="blue.800" borderRight="1px solid #4299e1">{t.owasp.factors.opportunity}</Th>
-                  <Th p="2" shadow="md" maxWidth='120px' borderRight="2px solid #4299e1" fontSize="xs" bg="blue.100" color="blue.800">{t.owasp.factors.size}</Th>
-                  <Th p="2" shadow="md" maxWidth='120px' fontSize="xs" bg="orange.100" color="orange.800" borderRight="1px solid #ed8936">{t.owasp.factors.ease_of_discovery}</Th>
-                  <Th p="2" shadow="md" maxWidth='120px' fontSize="xs" bg="orange.100" color="orange.800" borderRight="1px solid #ed8936">{t.owasp.factors.ease_of_exploit}</Th>
-                  <Th p="2" shadow="md" maxWidth='120px' fontSize="xs" bg="orange.100" color="orange.800" borderRight="1px solid #ed8936">{t.owasp.factors.awareness}</Th>
-                  <Th p="2" shadow="md" maxWidth='120px' borderRight="2px solid #ed8936" fontSize="xs" bg="orange.100" color="orange.800">{t.owasp.factors.intrusion_detection}</Th>
-                  <Th p="2" shadow="md" maxWidth='120px' fontSize="xs" bg="red.100" color="red.800" borderRight="1px solid #e53e3e">{t.owasp.factors.loss_of_confidentiality}</Th>
-                  <Th p="2" shadow="md" maxWidth='120px' fontSize="xs" bg="red.100" color="red.800" borderRight="1px solid #e53e3e">{t.owasp.factors.loss_of_integrity}</Th>
-                  <Th p="2" shadow="md" maxWidth='120px' fontSize="xs" bg="red.100" color="red.800" borderRight="1px solid #e53e3e">{t.owasp.factors.loss_of_availability}</Th>
-                  <Th p="2" shadow="md" maxWidth='120px' borderRight="2px solid #e53e3e" fontSize="xs" bg="red.100" color="red.800">{t.owasp.factors.loss_of_accountability}</Th>
-                  <Th p="2" shadow="md" maxWidth='120px' fontSize="xs" bg="purple.100" color="purple.800" borderRight="1px solid #805ad5">{t.owasp.factors.financial_damage}</Th>
-                  <Th p="2" shadow="md" maxWidth='120px' fontSize="xs" bg="purple.100" color="purple.800" borderRight="1px solid #805ad5">{t.owasp.factors.reputation_damage}</Th>
-                  <Th p="2" shadow="md" maxWidth='120px' fontSize="xs" bg="purple.100" color="purple.800" borderRight="1px solid #805ad5">{t.owasp.factors.non_compliance}</Th>
-                  <Th p="2" shadow="md" maxWidth='120px' borderRight="2px solid #805ad5" fontSize="xs" bg="purple.100" color="purple.800">{t.owasp.factors.privacy_violation}</Th>
+                  <Th p="2" shadow="md" maxWidth='120px' fontSize="xs" bg="blue.100" color="blue.800" borderRight="1px solid blue.400">{t.owasp.factors.skill_level}</Th>
+                  <Th p="2" shadow="md" maxWidth='120px' fontSize="xs" bg="blue.100" color="blue.800" borderRight="1px solid blue.400">{t.owasp.factors.motive}</Th>
+                  <Th p="2" shadow="md" maxWidth='120px' fontSize="xs" bg="blue.100" color="blue.800" borderRight="1px solid blue.400">{t.owasp.factors.opportunity}</Th>
+                  <Th p="2" shadow="md" maxWidth='120px' borderRight="2px solid blue.400" fontSize="xs" bg="blue.100" color="blue.800">{t.owasp.factors.size}</Th>
+                  <Th p="2" shadow="md" maxWidth='120px' fontSize="xs" bg="orange.100" color="orange.800" borderRight="1px solid orange.400">{t.owasp.factors.ease_of_discovery}</Th>
+                  <Th p="2" shadow="md" maxWidth='120px' fontSize="xs" bg="orange.100" color="orange.800" borderRight="1px solid orange.400">{t.owasp.factors.ease_of_exploit}</Th>
+                  <Th p="2" shadow="md" maxWidth='120px' fontSize="xs" bg="orange.100" color="orange.800" borderRight="1px solid orange.400">{t.owasp.factors.awareness}</Th>
+                  <Th p="2" shadow="md" maxWidth='120px' borderRight="2px solid orange.400" fontSize="xs" bg="orange.100" color="orange.800">{t.owasp.factors.intrusion_detection}</Th>
+                  <Th p="2" shadow="md" maxWidth='120px' fontSize="xs" bg="red.100" color="red.800" borderRight="1px solid red.500">{t.owasp.factors.loss_of_confidentiality}</Th>
+                  <Th p="2" shadow="md" maxWidth='120px' fontSize="xs" bg="red.100" color="red.800" borderRight="1px solid red.500">{t.owasp.factors.loss_of_integrity}</Th>
+                  <Th p="2" shadow="md" maxWidth='120px' fontSize="xs" bg="red.100" color="red.800" borderRight="1px solid red.500">{t.owasp.factors.loss_of_availability}</Th>
+                  <Th p="2" shadow="md" maxWidth='120px' borderRight="2px solid red.500" fontSize="xs" bg="red.100" color="red.800">{t.owasp.factors.loss_of_accountability}</Th>
+                  <Th p="2" shadow="md" maxWidth='120px' fontSize="xs" bg="purple.100" color="purple.800" borderRight="1px solid purple.500">{t.owasp.factors.financial_damage}</Th>
+                  <Th p="2" shadow="md" maxWidth='120px' fontSize="xs" bg="purple.100" color="purple.800" borderRight="1px solid purple.500">{t.owasp.factors.reputation_damage}</Th>
+                  <Th p="2" shadow="md" maxWidth='120px' fontSize="xs" bg="purple.100" color="purple.800" borderRight="1px solid purple.500">{t.owasp.factors.non_compliance}</Th>
+                  <Th p="2" shadow="md" maxWidth='120px' borderRight="2px solid purple.500" fontSize="xs" bg="purple.100" color="purple.800">{t.owasp.factors.privacy_violation}</Th>
                 </>
               )}
             </Tr>
@@ -1214,7 +1215,7 @@ const Analysis = () => {
                         locale={locale}
                       />
                     </Td>
-                    <Td p="4" shadow="md" style={{width: "120px", minWidth: "120px"}} bg="blue.50" borderRight="2px solid #4299e1">
+                    <Td p="4" shadow="md" style={{width: "120px", minWidth: "120px"}} bg="blue.50" borderRight="2px solid blue.400">
                       <OwaspSelector
                         factorName="size"
                         threatId={threat.id}
@@ -1252,7 +1253,7 @@ const Analysis = () => {
                         locale={locale}
                       />
                     </Td>
-                    <Td p="4" shadow="md" style={{width: "120px", minWidth: "120px"}} bg="orange.50" borderRight="2px solid #ed8936">
+                    <Td p="4" shadow="md" style={{width: "120px", minWidth: "120px"}} bg="orange.50" borderRight="2px solid orange.400">
                       <OwaspSelector
                         factorName="intrusion_detection"
                         threatId={threat.id}
@@ -1290,7 +1291,7 @@ const Analysis = () => {
                         locale={locale}
                       />
                     </Td>
-                    <Td p="4" shadow="md" style={{width: "120px", minWidth: "120px"}} bg="red.50" borderRight="2px solid #e53e3e">
+                    <Td p="4" shadow="md" style={{width: "120px", minWidth: "120px"}} bg="red.50" borderRight="2px solid red.500">
                       <OwaspSelector
                         factorName="loss_of_accountability"
                         threatId={threat.id}
@@ -1328,7 +1329,7 @@ const Analysis = () => {
                         locale={locale}
                       />
                     </Td>
-                    <Td p="4" shadow="md" style={{width: "120px", minWidth: "120px"}} bg="purple.50" borderRight="2px solid #805ad5">
+                    <Td p="4" shadow="md" style={{width: "120px", minWidth: "120px"}} bg="purple.50" borderRight="2px solid purple.500">
                       <OwaspSelector
                         factorName="privacy_violation"
                         threatId={threat.id}
@@ -1423,7 +1424,7 @@ const Analysis = () => {
                   {(isAdmin || (canWrite && threat.created_by && threat.created_by === user?.id)) && (
                   <button
                     type="button"
-                    style={{ background: '#e2e8f0', color: '#2d3748', border: 'none', borderRadius: '4px', padding: '4px 10px', cursor: 'pointer' }}
+                    style={{ background: colors.border, color: colors.text.primary, border: 'none', borderRadius: '4px', padding: '4px 10px', cursor: 'pointer' }}
                     aria-label="Eliminar amenaza"
                     title="Eliminar amenaza"
                     onClick={() => {
@@ -1467,7 +1468,7 @@ const Analysis = () => {
       <div style={{ display: 'flex', justifyContent: 'center', gap: '15px', marginTop: '20px' }}>
         <button
           type="button"
-          style={{ padding: '10px 30px', fontSize: '16px', background: '#38a169', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
+          style={{ padding: '10px 30px', fontSize: '16px', background: colors.success, color: colors.white, border: 'none', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
           onClick={generateReport}
         >
           <FaFilePdf size={16} />
@@ -1475,7 +1476,7 @@ const Analysis = () => {
         </button>
         {canWrite && <button
           type="button"
-          style={{ padding: '10px 30px', fontSize: '16px', background: '#38a169', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
+          style={{ padding: '10px 30px', fontSize: '16px', background: colors.success, color: colors.white, border: 'none', borderRadius: '6px', cursor: 'pointer' }}
           onClick={async () => {
             try {
               // Crear un nuevo threat en el backend
@@ -1532,7 +1533,7 @@ const Analysis = () => {
         >+ {t?.ui?.add_threat || 'Add Threat'}</button>}
         {canWrite && <button
           type="button"
-          style={{ padding: '10px 30px', fontSize: '16px', background: '#ffa833', color: '#00243c', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
+          style={{ padding: '10px 30px', fontSize: '16px', background: colors.primary.default, color: colors.white, border: 'none', borderRadius: '6px', cursor: 'pointer' }}
           onClick={async () => {
             if (!threats || !Array.isArray(threats)) {
               showNotification(

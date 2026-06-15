@@ -2,7 +2,7 @@
  * Componente de Loading
  * Archivo: LoadingScreen.jsx
  * Propósito: Pantalla de carga mientras se verifica la autenticación
- * 
+ *
  * Características:
  * - Spinner centrado en pantalla
  * - Mensaje de carga
@@ -12,6 +12,7 @@
 import React from 'react';
 import { ChakraProvider } from '@chakra-ui/react';
 import { loadingContainerStyles } from '../styles/LoginStyles';
+import { colors } from '../theme/colors';
 
 /**
  * Componente LoadingScreen
@@ -26,15 +27,15 @@ const LoadingScreen = () => {
           <div style={{
             width: '40px',
             height: '40px',
-            border: '4px solid #f3f3f3',
-            borderTop: '4px solid #3182ce',
+            border: `4px solid ${colors.background}`,
+            borderTop: `4px solid ${colors.primary.default}`,
             borderRadius: '50%',
             animation: 'spin 1s linear infinite',
             margin: '0 auto 20px'
           }}></div>
-          Cargando...
+          <span style={{ color: colors.text.secondary }}>Cargando...</span>
         </div>
-        
+
         {/* CSS para la animación del spinner */}
         <style jsx>{`
           @keyframes spin {

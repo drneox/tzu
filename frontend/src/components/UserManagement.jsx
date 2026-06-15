@@ -104,7 +104,7 @@ const UserManagement = () => {
     <Box p={6}>
       <HStack justify="space-between" mb={6}>
         <Heading size="lg">{tU.title || 'User Management'}</Heading>
-        <Button colorScheme="blue" onClick={onOpen}>{tU.new_user || '+ New User'}</Button>
+        <Button colorScheme="indigo" onClick={onOpen}>{tU.new_user || '+ New User'}</Button>
       </HStack>
 
       <Tabs onChange={(idx) => { if (idx === 1) fetchAuditLog(); }}>
@@ -226,7 +226,7 @@ const UserManagement = () => {
           </ModalBody>
           <ModalFooter>
             <Button variant="ghost" mr={3} onClick={onClose}>{tU.cancel || 'Cancel'}</Button>
-            <Button colorScheme="blue" onClick={handleCreate} isLoading={submitting}>{tU.create || 'Create'}</Button>
+            <Button colorScheme="indigo" onClick={handleCreate} isLoading={submitting}>{tU.create || 'Create'}</Button>
           </ModalFooter>
         </ModalContent>
       </Modal>

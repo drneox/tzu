@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import CreatableSelect from 'react-select/creatable';
 import { getProjects } from '../services';
 import { useLocalization } from '../hooks/useLocalization';
+import { colors } from '../theme/colors';
 
 const ProjectCombobox = ({ value, onChange, isDisabled = false }) => {
   const { t } = useLocalization();
@@ -61,11 +62,11 @@ const ProjectCombobox = ({ value, onChange, isDisabled = false }) => {
         container: (base) => ({ ...base, width: '100%' }),
         control: (base) => ({
           ...base,
-          borderColor: '#CBD5E0',
+          borderColor: colors.borderStrong,
           borderRadius: '6px',
           minHeight: '40px',
           boxShadow: 'none',
-          '&:hover': { borderColor: '#A0AEC0' },
+          '&:hover': { borderColor: colors.text.muted },
         }),
       }}
     />

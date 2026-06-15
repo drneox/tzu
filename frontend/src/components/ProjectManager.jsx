@@ -133,7 +133,7 @@ const ProjectManager = () => {
   if (isLoading) {
     return (
       <Flex align="center" justify="center" mt={10}>
-        <Spinner size="xl" color="blue.500" />
+        <Spinner size="xl" color="indigo.500" />
       </Flex>
     );
   }
@@ -163,7 +163,7 @@ const ProjectManager = () => {
             mb={2}
             rows={2}
           />
-          <Button type="submit" colorScheme="teal" size="sm" isLoading={isCreating}>
+          <Button type="submit" colorScheme="indigo" size="sm" isLoading={isCreating}>
             {t?.projects?.created || 'Crear proyecto'}
           </Button>
         </Box>
@@ -174,7 +174,7 @@ const ProjectManager = () => {
         <Text color="gray.500">{t?.projects?.noProject || 'No hay proyectos'}</Text>
       ) : (
         <Table variant="simple" size="sm">
-          <Thead bg="blue.500">
+          <Thead bg="indigo.500">
             <Tr>
               <Th color="white" w="8"></Th>
               <Th color="white">{t?.projects?.title || 'Proyecto'}</Th>
@@ -221,7 +221,7 @@ const ProjectManager = () => {
                     )}
                   </Td>
                   <Td isNumeric>
-                    <Badge colorScheme="blue">{p.analysis_count}</Badge>
+                    <Badge colorScheme="indigo">{p.analysis_count}</Badge>
                   </Td>
                   <Td isNumeric>
                     <Badge colorScheme="green">{p.member_count}</Badge>
@@ -231,7 +231,7 @@ const ProjectManager = () => {
                       <HStack spacing={1} justify="flex-end">
                         {editingId === p.id ? (
                           <>
-                            <Button size="xs" colorScheme="teal" onClick={() => handleUpdate(p.id)}>✓</Button>
+                            <Button size="xs" colorScheme="indigo" onClick={() => handleUpdate(p.id)}>✓</Button>
                             <Button size="xs" onClick={() => setEditingId(null)}>✕</Button>
                           </>
                         ) : (
@@ -240,7 +240,7 @@ const ProjectManager = () => {
                               icon={<EditIcon />}
                               size="xs"
                               variant="ghost"
-                              colorScheme="blue"
+                              colorScheme="indigo"
                               aria-label="edit"
                               onClick={() => startEdit(p)}
                             />
