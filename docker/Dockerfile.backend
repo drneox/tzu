@@ -18,10 +18,15 @@ COPY api/ .
 
 # Copy .env file (after api/ to ensure it's not overwritten)
 COPY .env .
+# Strip CR (\r) from .env in case it was checked out with CRLF on Windows.
+# No-op for LF files, so safe on Linux/macOS.
+RUN sed -i 's/\r$//' .env
 
-# Copy entrypoint from docker folder  
+# Copy entrypoint from docker folder
 COPY docker/backend.entrypoint.sh .
-RUN chmod +x backend.entrypoint.sh
+# Strip CR (\r) in case the file was checked out with CRLF on Windows,
+# then make it executable. No-op for LF files, so safe on Linux/macOS.
+RUN sed -i 's/\r$//' backend.entrypoint.sh && chmod +x backend.entrypoint.sh
 
 EXPOSE 8000
 
